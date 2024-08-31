@@ -10,16 +10,17 @@ function InternalPage() {
         dispatch(setPageTitle({ title: "Integrations" }));
     }, [dispatch]);
 
+    
     const [formData, setFormData] = useState({
         Start_Year: '',
         Semester: '',
         Major: '',
         Department: '',
-        CPI_Region3_Education: '',
-        Inflation_Rate: '',
-        Number_of_Applicants: '',
-        HFCE_Education: '',
-        HFCE: '',
+        // CPI_Region3_Education: '',
+        // Inflation_Rate: '',
+        // Number_of_Applicants: '',
+        // HFCE_Education: '',
+        // HFCE: '',
     });
 
     const handleChange = (e) => {
@@ -33,10 +34,33 @@ function InternalPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post(`${process.env.REACT_APP_ML_BASE_URL}/process-data`, formData);
-            console.log('Response:', response.data);
+            const processDataResponse = await axios.post(`${process.env.REACT_APP_ML_BASE_URL}/process-data`, formData);
+            console.log('Process Data Response:', processDataResponse.data);
+    
+            if (processDataResponse.data.status !== 'success' || !processDataResponse.data.processed_data) {
+                console.error('Error processing data:', processDataResponse.data);
+                return;
+            }
+    
+            // Parse the processed_data string back into an object
+            const processedData = JSON.parse(processDataResponse.data.processed_data);
+    
+            // Replace null values with a default value (e.g., 0 or '')
+            const cleanedProcessedData = processedData.map(item => 
+                Object.fromEntries(
+                    Object.entries(item).map(([key, value]) => [key, value === null ? 0 : value])
+                )
+            );
+    
+            const predictPayload = {
+                processed_data: cleanedProcessedData
+            };
+            console.log('Sending to predict:', predictPayload);
+    
+            const predictions = await axios.post(`${process.env.REACT_APP_ML_BASE_URL}/predict`, predictPayload);
+            console.log('Predictions:', predictions.data);
         } catch (error) {
-            console.error(`${process.env.REACT_APP_ML_BASE_URL}/process-dataError submitting form:`, error);
+            console.error(`${process.env.REACT_APP_ML_BASE_URL}/process-data Error submitting form:`, error);
         }
     };
 
