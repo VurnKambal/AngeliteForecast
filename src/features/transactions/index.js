@@ -42,9 +42,11 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
 
   const removeAppliedFilter = () => {
     setFilterParams({
-      department: "",
       startYear: "",
       endYear: "",
+      semester: "",
+      department: "",
+      major: "",
       firstYear: "",
       secondYear: "",
       thirdYear: "",
@@ -107,9 +109,11 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
 function Transactions() {
   const [trans, setTrans] = useState([]);
   const [filterParams, setFilterParams] = useState({
-    department: "",
     startYear: "",
     endYear: "",
+    semester: "",
+    department: "",
+    major: "",
     firstYear: "",
     secondYear: "",
     thirdYear: "",
@@ -121,7 +125,7 @@ function Transactions() {
   // Fetch data with optional filter and search params
   const fetchData = async () => {
     try {
-      let url = "http://localhost:5000/api/transactions";
+      let url = `${process.env.REACT_APP_API_BASE_URL}/api/transactions`;
       const params = [];
 
       // Add filter params to the URL
@@ -158,11 +162,12 @@ function Transactions() {
   // Remove filter and fetch all data
   const removeFilter = () => {
     setFilterParams({
-      department: "",
       startYear: "",
       endYear: "",
+      semester: "",
       firstYear: "",
       secondYear: "",
+      department: "",
       thirdYear: "",
       fourthYear: "",
       fifthYear: "",
@@ -198,11 +203,11 @@ function Transactions() {
           <table className="table w-full">
             <thead>
               <tr>
-                <th>Department</th>
-                <th>Major</th>
-                <th>Semester</th>
                 <th>Start_Year</th>
                 <th>End_Year</th>
+                <th>Semester</th>
+                <th>Department</th>
+                <th>Major</th>
                 <th>First_Year</th>
                 <th>Second_Year</th>
                 <th>Third_Year</th>
@@ -214,24 +219,24 @@ function Transactions() {
             <tbody>
               {trans.map((l, k) => {
                 const total =
-                  (l.first_year || 0) +
-                  (l.second_year || 0) +
-                  (l.third_year || 0) +
-                  (l.fourth_year || 0) +
-                  (l.fifth_year || 0);
+                  (l["1st_Year"] || 0) +
+                  (l["2nd_Year"] || 0) +
+                  (l["3rd_Year"] || 0) +
+                  (l["4th_Year"] || 0) +
+                  (l["5th_Year"] || 0);
 
                 return (
                   <tr key={k}>
-                    <td>{l.department}</td>
-                    <td>{l.major}</td>
-                    <td>{l.semester}</td>
-                    <td>{l.start_year}</td>
-                    <td>{l.end_year}</td>
-                    <td>{l.first_year}</td>
-                    <td>{l.second_year}</td>
-                    <td>{l.third_year}</td>
-                    <td>{l.fourth_year}</td>
-                    <td>{l.fifth_year}</td>
+                    <td>{l.Start_Year}</td> 
+                    <td>{l.End_Year}</td> 
+                    <td>{l.Semester}</td> 
+                    <td>{l.Department}</td> 
+                    <td>{l.Major}</td> 
+                    <td>{l["1st_Year"] || 0}</td>
+                    <td>{l["2nd_Year"] || 0}</td>
+                    <td>{l["3rd_Year"] || 0}</td>
+                    <td>{l["4th_Year"] || 0}</td>
+                    <td>{l["5th_Year"] || 0}</td>
                     <td>{total}</td>
                   </tr>
                 );

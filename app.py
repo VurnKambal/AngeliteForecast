@@ -37,6 +37,16 @@ admission_df = None
 hfce_df = None
 models = {}
 
+# Dictionary for major with incorrect department
+incorrect_department_dict = {
+    "BSBA-HRM": "SBA",
+    "MAPEH-BSED": "SED",
+}
+
+department_dict = {
+    "CHTM" : "SHTM",
+    "CICT" : "SOC",
+}
 
 # Custom JSON encoder to handle NaN values
 class NpEncoder(json.JSONEncoder):
@@ -107,8 +117,8 @@ def train_models(data, weight_ses=0.3, weight_rf=0.4, weight_xgb=0.3, engine=ENG
     models = {}
     for major in data['Major'].unique():
         major_data = data[data['Major'] == major]
-        X_major_train = major_data.drop(columns=['Major', 'Start_Year', '1st_Year', 'Grade_12'])
-        y_major_train = major_data['1st_Year']
+        X_major_train = major_data.drop(columns=['major', 'start_year', '1st_year', 'grade_12'])
+        y_major_train = major_data['1st_year']
 
         # Train SES model
         ses_model = SimpleExpSmoothing(y_major_train).fit(smoothing_level=0.8, optimized=False)
@@ -127,42 +137,76 @@ def train_models(data, weight_ses=0.3, weight_rf=0.4, weight_xgb=0.3, engine=ENG
     return models
 
 # Function to make predictions
-def make_predictions(models, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, engine=ENGINE):
-    # Ensure the weights sum to 1
-    total_weight = weight_ses + weight_rf + weight_xgb
-    weight_ses /= total_weight
-    weight_rf /= total_weight
-    weight_xgb /= total_weight
-
-    rf_model = models["rf"]
-    xgb_model = models["xgb"]
-    ensemble_models = models["ensembled"]
-
-    print("\n\n\ndata     ", data)
+def make_predictions(selectedModel, models, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, engine=ENGINE):
     major = data['Major'][0]
-    ses_model = ensemble_models.get(major).get('ses')
-    lr_model = ensemble_models.get(major).get('lr')
     major_data = data[data['Major'] == major]
+
     X_major = major_data.drop(columns=['Major', 'TOTAL_lag_2'])
+
     
-    dpred = xgb.DMatrix(X_major)
-    print("data ", X_major, "\n", X_major.columns)
+    match(selectedModel.lower()):
+        # case "ses":
+        #     model = models["ses"]
+        case "randomforest":
+            rf_model = models["rf"]
+            prediction = rf_model.predict(X_major)[0]
+            print("prediction", prediction)
+        
+        case "xgboost":     
+            xgb_model = models["xgb"]
+
+            dpred = xgb.DMatrix(X_major)
+            try:
+                prediction = xgb_model.predict(dpred)[0]
+            except Exception as e:
+                print(f"Error during XGBoost prediction: {str(e)}")
+                print("XGBoost model feature names:", xgb_model.feature_names)
+                raise
+            print("prediction", prediction)
+        
+        case "ensemble":
+            # Ensure the weights sum to 1
+            total_weight = weight_ses + weight_rf + weight_xgb
+            weight_ses /= total_weight
+            weight_rf /= total_weight
+            weight_xgb /= total_weight
+
+            rf_model = models["rf"]
+            xgb_model = models["xgb"]
+            ensemble_models = models["ensembled"]
+
+            print("\n\n\ndata     ", data)
+            major = data['Major'][0]
+            ses_model = ensemble_models.get(major).get('ses')
+            lr_model = ensemble_models.get(major).get('lr')
+            major_data = data[data['Major'] == major]
+            X_major = major_data.drop(columns=['Major', 'TOTAL_lag_2'])
+            
+            dpred = xgb.DMatrix(X_major)
+            print("data ", X_major, "\n", X_major.columns)
 
 
 
-    ses_pred = ses_model.forecast(steps=len(X_major))
-    rf_pred = rf_model.predict(X_major)
+            ses_pred = ses_model.forecast(steps=len(X_major))
+            rf_pred = rf_model.predict(X_major)
+            
+            try:
+                xgb_pred = xgb_model.predict(dpred)
+            except Exception as e:
+                print(f"Error during XGBoost prediction: {str(e)}")
+                print("XGBoost model feature names:", xgb_model.feature_names)
+                raise
+            combined_pred = (weight_ses * ses_pred + weight_rf * rf_pred + weight_xgb * xgb_pred)
+            # prediction = combined_pred
+
+            return combined_pred.iloc[0]
+        case _:
+            return jsonify({"message": "Invalid model"}), 400
+        
+
+    return json.dumps(prediction, cls=NpEncoder)
     
-    try:
-        xgb_pred = xgb_model.predict(dpred)
-    except Exception as e:
-        print(f"Error during XGBoost prediction: {str(e)}")
-        print("XGBoost model feature names:", xgb_model.feature_names)
-        raise
-    combined_pred = (weight_ses * ses_pred + weight_rf * rf_pred + weight_xgb * xgb_pred)
-    # prediction = combined_pred
-
-    return combined_pred.iloc[0]
+    
 
 # Endpoint to train models
 @app.route('/train', methods=['POST'])
@@ -180,7 +224,8 @@ def predict():
     processed_data = data['processed_data']
     df = pd.DataFrame(processed_data)
     # models = train_models(df)  # Assuming models are trained on the same data
-    prediction = make_predictions(models, df)
+    selectedModel  = data['model']
+    prediction = make_predictions(selectedModel, models, df)
     print("prediction", prediction)
     return jsonify(prediction), 200
 

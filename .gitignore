@@ -28,5 +28,7 @@ __pycache__/
 *.so
 .env
 venv/
-*.pkl
+
 *.csv
+
+app copy.py

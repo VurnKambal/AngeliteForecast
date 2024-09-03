@@ -60,16 +60,6 @@ similar_majors_dict = {
 
     }
 
-# Dictionary for major with incorrect department
-incorrect_department_dict = {
-    "BSBA-HRM": "SBA",
-    "MAPEH-BSED": "SED",
-}
-
-department_dict = {
-    "CHTM" : "SHTM",
-    "CICT" : "SOC",
-}
 
 # List of majors to drop
 drop_majors = [
@@ -228,9 +218,9 @@ if __name__ == "__main__":
 
 def initialize_models():
     # Load the models
-    rf_model = joblib.load("models/final/rf_model.pkl")
-    xgb_model = joblib.load("models/final/xgb_model.pkl")
-    ensembled_models = joblib.load("models/final/ensembled_models.pkl")
+    rf_model = joblib.load("models/rf_model.pkl")
+    xgb_model = joblib.load("models/xgb_model.pkl")
+    ensembled_models = joblib.load("models/ensembled_models.pkl")
     models = {
         "rf": rf_model,
         "xgb": xgb_model,
@@ -295,7 +285,7 @@ def clean_data(df):
     # Dictionary for major with incorrect department
     incorrect_department_dict = {
         "BSBA-HRM": "SBA",
-        "MAPEH-BSED": "SED",
+        # "MAPEH-BSED": "SED",
     }
 
     department_dict = {
@@ -351,15 +341,14 @@ def clean_data(df):
     # Step 4: Drop unwanted majors
     df = df[~df['Major'].isin(drop_majors)]
 
-
     # Step 6: Combine majors with the same name within the same semester
     df = df.groupby(['Start_Year', 'Semester', 'Major', 'Department'], as_index=False).sum(["1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year", "TOTAL"])
-
     shs_df = df[df["Department"] == "SHS"].pivot_table(index=["Start_Year", "Semester"], columns="Major", values="Grade_12").reset_index()
 
     df = df[~df['Department'].isin(['GS', 'JHS', 'SHS', 'HAUSPELL'])]
     df = df[~df['Major'].isin(['TOTAL', 'GRAND TOTAL'])]
-    df = df.drop(df.loc[:, "2nd_Year":"Grade_12"].columns, axis=1)
+    print(df)
+    df = df.drop(df.loc[:, "2nd_Year":"Grade_11"].columns, axis=1)
     df = df.merge(shs_df, on=["Start_Year", "Semester"], how="left")
     df = df.reset_index(drop=True)
     
@@ -368,7 +357,9 @@ def clean_data(df):
 
 
 def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df):
+    enrollment_df.columns = enrollment_df.columns.str.title()
     
+    print(enrollment_df.columns)
     dept_encoder = joblib.load('data/dept_encoder.pkl')
     major_encoder = joblib.load('data/major_encoder.pkl')
     dept_pca = joblib.load('data/dept_pca.pkl')
@@ -445,12 +436,12 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     
     # Drop unnecessary columns
     X_pred = X_pred.drop(columns=["Year", "Month"])
-
+    print("eeeeee", enrollment_df)
     enrollment_df = clean_data(enrollment_df)
     print("-"*50, enrollment_df.columns)
     enrollment_df = create_lag_features(enrollment_df, lag_steps=1)
     enrollment_df = create_rolling_std(enrollment_df, lag_steps=1, window_size=3)
-    enrollment_df = create_lag_features(enrollment_df, lag_steps=2, target="TOTAL")
+    enrollment_df = create_lag_features(enrollment_df, lag_steps=1, target="TOTAL")
 
     X_pred = X_pred.merge(enrollment_df, on=["Major", "Department", "Start_Year", "Semester"], how="left")
 
