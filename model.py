@@ -345,6 +345,7 @@ def clean_data(df):
     df = df.groupby(['Start_Year', 'Semester', 'Major', 'Department'], as_index=False).sum(["1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year", "TOTAL"])
     shs_df = df[df["Department"] == "SHS"].pivot_table(index=["Start_Year", "Semester"], columns="Major", values="Grade_12").reset_index()
 
+    print("zzzzzzzzzz", df.columns)
     df = df[~df['Department'].isin(['GS', 'JHS', 'SHS', 'HAUSPELL'])]
     df = df[~df['Major'].isin(['TOTAL', 'GRAND TOTAL'])]
     print(df)
@@ -357,7 +358,6 @@ def clean_data(df):
 
 
 def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df):
-    enrollment_df.columns = enrollment_df.columns.str.title()
     
     print(enrollment_df.columns)
     dept_encoder = joblib.load('data/dept_encoder.pkl')
@@ -366,8 +366,15 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     major_pca = joblib.load('data/major_pca.pkl')
     columns = joblib.load("data/columns.pkl")
    
+    enrollment_df = clean_data(enrollment_df)
     # Create a DataFrame from user input
-    df = user_input
+    if user_input is not None:
+        df = pd.DataFrame(user_input)
+    else:
+        df = enrollment_df
+        columns.insert(3, "1st_Year")
+    
+    print("df", df)
 
     # Create prediction DataFrame
     X_pred = pd.DataFrame()
@@ -436,9 +443,7 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     
     # Drop unnecessary columns
     X_pred = X_pred.drop(columns=["Year", "Month"])
-    print("eeeeee", enrollment_df)
-    enrollment_df = clean_data(enrollment_df)
-    print("-"*50, enrollment_df.columns)
+
     enrollment_df = create_lag_features(enrollment_df, lag_steps=1)
     enrollment_df = create_rolling_std(enrollment_df, lag_steps=1, window_size=3)
     enrollment_df = create_lag_features(enrollment_df, lag_steps=1, target="TOTAL")
@@ -477,6 +482,8 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     
     X_pred = X_pred.drop(columns=["CPI_Region3", "Number_of_Applicants", 'TOTAL', "Department", "Start_Month", "End_Year"])
 
+
+    print("X_pred", X_pred.columns)
     # Reorder the columns of X_pred to match the order in columns.pkl
     X_pred = X_pred.reindex(columns=columns, fill_value=0)
 

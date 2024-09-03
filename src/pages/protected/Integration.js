@@ -92,20 +92,26 @@ function InternalPage() {
                 model: selectedModel,
                 year_level: formData.Year_Level // Include Year_Level in the payload
             };
-            console.log('Sending to predict:', predictPayload);
-            const predictions = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/predict`, predictPayload);
-            console.log('Predictions:', predictions.data);
-
-            // Round off the prediction if it is a float
-            const roundedPrediction = Math.round(predictions.data);
-
-            // Set innerHTML of the Prediction div
-            document.getElementById('Prediction').innerHTML = `Predictions: ${roundedPrediction}`;
             
+            try {
+                console.log('Sending to predict:', predictPayload);
+                const predictions = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/predict`, predictPayload);
+                console.log('Predictions:', predictions.data);
+
+                // Round off the prediction if it is a float
+                const roundedPrediction = Math.round(predictions.data);
+
+                // Set innerHTML of the Prediction div
+                document.getElementById('Prediction').innerHTML = `Predictions: ${roundedPrediction}`;
+            } catch (error) {
+                console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/predict Error submitting form:`, error);
+                document.getElementById('Prediction').innerHTML = 'Error submitting form';
+            }
         } catch (error) {
             console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/process-data Error submitting form:`, error);
             document.getElementById('Prediction').innerHTML = 'Error submitting form';
         }
+       
     };
 
     return (

@@ -99,41 +99,49 @@ def query_data(_engine):  # df_included=True, cpi_df_included=True, inflation_df
     admission_df = pd.read_sql("SELECT * FROM admission", _engine)   # Changed to database query
     hfce_df = pd.read_sql("SELECT * FROM hfce", _engine)                  # Changed to database query
 
-    print("query DF", enrollment_df)
-    print("query DF", cpi_df)
-    print("query DF", inflation_df)
-    print("query DF", admission_df)
-    print("query DF", hfce_df)
-
 
 
 ENGINE = connect_to_database(USERNAME, PASSWORD, HOST, PORT, DATABASE)
 
 
 # Function to train models for each major
-def train_models(data, weight_ses=0.3, weight_rf=0.4, weight_xgb=0.3, engine=ENGINE):
+def train_models(data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, engine=ENGINE):
+ # Endpoint to train models
+    df = pd.DataFrame(data)
     
+    # Tuned parameters during past training
+    params = json.load(open("data/tuned_params.json"))
+    rf_params = params["rf"]
+    xgb_params = params["xgb"]
 
-    models = {}
-    for major in data['Major'].unique():
-        major_data = data[data['Major'] == major]
-        X_major_train = major_data.drop(columns=['major', 'start_year', '1st_year', 'grade_12'])
-        y_major_train = major_data['1st_year']
-
-        # Train SES model
-        ses_model = SimpleExpSmoothing(y_major_train).fit(smoothing_level=0.8, optimized=False)
-        models[major] = {'ses': ses_model}
-
-        # Train RandomForest model
-        rf_model = RandomForestRegressor()
-        rf_model.fit(X_major_train, y_major_train)
-        models[major]['rf'] = rf_model
-
-        # Train XGBoost model
-        xgb_model = XGBRegressor()
-        xgb_model.fit(X_major_train, y_major_train)
-        models[major]['xgb'] = xgb_model
-
+    print("df", df)
+    # Train Random Forest model
+    X_train = df.query("2018 < Start_Year < 2024").drop(columns=["1st_Year", "Major"])# 'Year_Level'])
+    y_train = df.query("2018 < Start_Year < 2024")['1st_Year']
+    rf_model = RandomForestRegressor(**rf_params, random_state=42)
+    rf_model.fit(X_train, y_train)
+    
+    # Train XGBoost DART model
+    dtrain = xgb.DMatrix(X_train, label=y_train)
+    xgb_model = xgb.train(xgb_params, dtrain)
+    
+    # Train SES model and ensemble with Random Forest
+    models = {
+        "rf": rf_model,
+        "xgb": xgb_model,
+        "ses": {},
+    }
+    for major in df['Major'].unique():
+        major_data = df[df['Major'] == major]
+        X_major_train = major_data.drop(columns=['Major', 'Start_Year', '1st_Year'])
+        y_major_train = major_data['1st_Year']
+        if len(y_major_train) > 1:
+            # Train SES model
+            ses_model = SimpleExpSmoothing(y_major_train).fit(smoothing_level=0.8, optimized=False)
+            models["ses"][major] = ses_model
+        else:
+            print(f"Skipping SES model for {major} because it has less than 2 data points.")
+    
     return models
 
 # Function to make predictions
@@ -141,7 +149,7 @@ def make_predictions(selectedModel, models, data, weight_ses=0.2, weight_rf=0.4,
     major = data['Major'][0]
     major_data = data[data['Major'] == major]
 
-    X_major = major_data.drop(columns=['Major', 'TOTAL_lag_2'])
+    X_major = major_data.drop(columns=['Major'])
 
     
     match(selectedModel.lower()):
@@ -173,14 +181,15 @@ def make_predictions(selectedModel, models, data, weight_ses=0.2, weight_rf=0.4,
 
             rf_model = models["rf"]
             xgb_model = models["xgb"]
-            ensemble_models = models["ensembled"]
+            ses_model = models["ses"]
 
             print("\n\n\ndata     ", data)
             major = data['Major'][0]
-            ses_model = ensemble_models.get(major).get('ses')
-            lr_model = ensemble_models.get(major).get('lr')
+            ses_model = ses_model.get(major) # .get('ses')
+            # lr_model = ses_model.get(major).get('lr')
             major_data = data[data['Major'] == major]
-            X_major = major_data.drop(columns=['Major', 'TOTAL_lag_2'])
+            print(major_data.columns)
+            X_major = major_data.drop(columns=['Major'])
             
             dpred = xgb.DMatrix(X_major)
             print("data ", X_major, "\n", X_major.columns)
@@ -225,17 +234,16 @@ def predict():
     df = pd.DataFrame(processed_data)
     # models = train_models(df)  # Assuming models are trained on the same data
     selectedModel  = data['model']
+    
     prediction = make_predictions(selectedModel, models, df)
     print("prediction", prediction)
     return jsonify(prediction), 200
 
 # New route to process data from React app
 @app.route('/process-data', methods=['POST'])
-def process_data():
+def process_data(train=True):
     global models, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df
     print(models)
-    if len(models) == 0:
-        models = initialize_models()
 
     data = request.get_json()
     user_input = pd.DataFrame([data])
@@ -248,10 +256,18 @@ def process_data():
     
     print("engine", ENGINE)
     print(inflation_df)
-    # Process the data here using the global DataFrames
+    if train:
+        # Process the data here using the global DataFrames
+        processed_data = preprocess_data(None, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
+        print("processed_data", processed_data)
+        models = train_models(processed_data)
+
+    else:
+        if len(models) == 0:
+            models = initialize_models()
+
     processed_data = preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
-     
-   
+            
 
     response = {
         'status': 'success',
