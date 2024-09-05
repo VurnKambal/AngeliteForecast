@@ -31,3 +31,5 @@ venv/
 
 
 app copy.py
+
+debug_plot.png

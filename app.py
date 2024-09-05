@@ -1,9 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
+import os
+import io
 import json
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 import joblib
 import xgboost as xgb
 
@@ -147,30 +150,46 @@ def train_models(data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, engine=ENG
 # Function to make predictions
 def make_predictions(selectedModel, models, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, engine=ENGINE):
     major = data['Major'][0]
+    pred_year = data['Start_Year'].iloc[-1]
+    pred_semester = data['Semester'].iloc[-1]
     major_data = data[data['Major'] == major]
-
-    X_major = major_data.drop(columns=['Major'])
-
+    predictions = {}
+    X_major = major_data.drop(columns=['Major']).reset_index(drop=True)
+    print("X_major", X_major)
     
+    # Split X_major into train and pred
+    X_major_train = X_major[(X_major['Start_Year'] < pred_year) | ((X_major['Start_Year'] == pred_year) & (X_major['Semester'] < pred_semester))]
+    X_major_pred = X_major[(X_major['Start_Year'] == pred_year) & (X_major['Semester'] == pred_semester)]
+    print("pred_year", data)
+    print(X_major_train, "\n\n\n", X_major_pred)
     match(selectedModel.lower()):
-        # case "ses":
-        #     model = models["ses"]
         case "randomforest":
             rf_model = models["rf"]
-            prediction = rf_model.predict(X_major)[0]
-            print("prediction", prediction)
+            y_major_train_pred = rf_model.predict(X_major_train)
+            y_major_pred = rf_model.predict(X_major_pred)
+            predictions = {
+                "train_pred": y_major_train_pred,
+                "test_pred": y_major_pred
+            }
+            print("predictions", predictions)
         
         case "xgboost":     
             xgb_model = models["xgb"]
 
-            dpred = xgb.DMatrix(X_major)
+            dtrain = xgb.DMatrix(X_major_train)
+            dpred = xgb.DMatrix(X_major_pred)
             try:
-                prediction = xgb_model.predict(dpred)[0]
+                y_major_train_pred = xgb_model.predict(dtrain)
+                y_major_pred = xgb_model.predict(dpred)
+                predictions = {
+                    "train_pred": y_major_train_pred,
+                    "test_pred": y_major_pred
+                }
             except Exception as e:
                 print(f"Error during XGBoost prediction: {str(e)}")
                 print("XGBoost model feature names:", xgb_model.feature_names)
                 raise
-            print("prediction", prediction)
+            print("predictions", predictions)
         
         case "ensemble":
             # Ensure the weights sum to 1
@@ -181,40 +200,63 @@ def make_predictions(selectedModel, models, data, weight_ses=0.2, weight_rf=0.4,
 
             rf_model = models["rf"]
             xgb_model = models["xgb"]
-            ses_model = models["ses"]
+            ensembled_models = models["ensembled"].get(major)
 
             print("\n\n\ndata     ", data)
             major = data['Major'][0]
-            ses_model = ses_model.get(major) # .get('ses')
-            # lr_model = ses_model.get(major).get('lr')
-            major_data = data[data['Major'] == major]
-            print(major_data.columns)
-            X_major = major_data.drop(columns=['Major'])
+            ses_model = ensembled_models["ses"]
             
-            dpred = xgb.DMatrix(X_major)
+            dtrain = xgb.DMatrix(X_major_train)
+            dpred = xgb.DMatrix(X_major_pred)
             print("data ", X_major, "\n", X_major.columns)
 
-
-
-            ses_pred = ses_model.forecast(steps=len(X_major))
-            rf_pred = rf_model.predict(X_major)
+            y_major_train_pred_ses = ses_model.fittedvalues
+            y_major_train_pred_rf = rf_model.predict(X_major_train)
+            y_major_train_pred_xgb = xgb_model.predict(dtrain)
+            print(len(y_major_train_pred_ses), len(y_major_train_pred_rf), len(y_major_train_pred_xgb))
             
-            try:
-                xgb_pred = xgb_model.predict(dpred)
-            except Exception as e:
-                print(f"Error during XGBoost prediction: {str(e)}")
-                print("XGBoost model feature names:", xgb_model.feature_names)
-                raise
-            combined_pred = (weight_ses * ses_pred + weight_rf * rf_pred + weight_xgb * xgb_pred)
-            # prediction = combined_pred
+            y_major_train_pred_combined = (weight_ses * y_major_train_pred_ses +
+                                           weight_rf * y_major_train_pred_rf +
+                                           weight_xgb * y_major_train_pred_xgb)
+            
+            y_major_pred_ses = ses_model.forecast(steps=len(X_major_pred))
+            y_major_pred_rf = rf_model.predict(X_major_pred)
+            y_major_pred_xgb = xgb_model.predict(dpred)
 
-            return combined_pred.iloc[0]
+            y_major_pred_combined = (weight_ses * y_major_pred_ses +
+                                     weight_rf * y_major_pred_rf +
+                                     weight_xgb * y_major_pred_xgb)
+
+            predictions = {
+                "train_pred": y_major_train_pred_combined,
+                "test_pred": y_major_pred_combined
+            }
+
         case _:
             return jsonify({"message": "Invalid model"}), 400
         
-
-    return json.dumps(prediction, cls=NpEncoder)
+    #   Save predictions to csv
+    predictions_df = pd.DataFrame({
+        'Prediction': np.concatenate([
+            predictions["train_pred"], 
+            predictions["test_pred"]
+            ]),
+        'Is_Train': np.concatenate([
+            np.ones(len(predictions["train_pred"])),
+            np.zeros(len(predictions["test_pred"]))
+            ])
+    })
+    predictions_df['Is_Train'] = predictions_df['Is_Train'].astype(bool)
+    print("predictions_df", predictions_df)
     
+    # Concatenate predictions_df with major_data
+    predictions_df = pd.concat([major_data[["Start_Year", "Semester", "Major"]], predictions_df], axis=1)
+    
+    # Save the concatenated data to CSV
+    predictions_df.to_csv('prediction_results.csv', index=False)
+
+    # Return the last prediction from predictions_df
+    return predictions_df.iloc[-1]["Prediction"]
     
 
 # Endpoint to train models
@@ -237,11 +279,11 @@ def predict():
     
     prediction = make_predictions(selectedModel, models, df)
     print("prediction", prediction)
-    return jsonify(prediction), 200
+    return jsonify(float(prediction)), 200
 
 # New route to process data from React app
 @app.route('/process-data', methods=['POST'])
-def process_data(train=True):
+def process_data(train=False):
     global models, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df
     print(models)
 
@@ -266,8 +308,11 @@ def process_data(train=True):
         if len(models) == 0:
             models = initialize_models()
 
+    
+    # processed_data = preprocess_data(combined_data, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
     processed_data = preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
-            
+         
+       
 
     response = {
         'status': 'success',
@@ -275,7 +320,83 @@ def process_data(train=True):
         'processed_data': json.dumps(processed_data.to_dict(orient='records'), cls=NpEncoder)
     }   
     print("Processed data response:", response)
+    print(processed_data)
     return jsonify(response), 200
+
+
+@app.route('/plot', methods=['POST'])
+def plot():
+    # Read the prediction results from the CSV file
+    df = pd.read_csv('prediction_results.csv')
+    major = df["Major"].iloc[0]
+    print(df,"\n\n\n")
+    print("major", df["Major"].iloc[0])
+    # Filter the DataFrame for the selected major
+    # Get actual values of major data from the database
+    query = f"""
+    SELECT "Start_Year", "Semester", "1st_Year"
+    FROM enrollment
+    WHERE "Major" = '{major}'
+    ORDER BY "Start_Year", "Semester"
+    """
+    major_data = pd.read_sql(query, ENGINE)
+    
+    # Map semester to month
+    semester_to_month = {1: 6, 2: 11}  # 1 -> June (6), 2 -> November (11)
+    
+    # Create a new column 'Date' by combining Start_Year and Semester
+    major_data['Date'] = pd.to_datetime(major_data['Start_Year'].astype(str) + '-' + 
+                                        major_data['Semester'].map(semester_to_month).astype(str) + '-01')
+    df['Date'] = pd.to_datetime(df['Start_Year'].astype(str) + '-' + 
+                                df['Semester'].map(semester_to_month).astype(str) + '-01')
+    
+    major_data = major_data.sort_values('Date')
+    df = df.sort_values('Date')
+
+    
+    # Fill NaN values in the '1st_Year' column with 0 for years where we only have predictions
+    major_data['1st_Year'].fillna(0, inplace=True)
+    
+    print("Major data:", major_data)
+    print(major_data.query('2018 < Start_Year < 2024'))
+    print(df)
+    
+    # Plot the time graph
+    plt.figure(figsize=(10, 6))
+    plt.plot(major_data['Date'], major_data['1st_Year'], label='Actual', marker='o')
+    # Plot predictions for training data
+    train_data = df[df['Is_Train']]
+    plt.plot(train_data['Date'], train_data['Prediction'], label='Train Prediction', linestyle=':', marker='d', color='orange')
+
+    # Plot predictions for test data
+    test_data = df[~df['Is_Train']]
+    plt.plot(test_data['Date'], test_data['Prediction'], label='Test Prediction', linestyle='-.', marker='x', color='red')
+    plt.xlabel('Date')
+    plt.ylabel('Total Enrollment')
+    plt.title(f'Actual vs Predicted Enrollment for {major}')
+    plt.legend()
+    
+    # Add grid for better readability
+    plt.grid(True, linestyle='--', alpha=0.7)
+    
+    # Rotate x-axis labels for better visibility if needed
+    plt.xticks(rotation=45)
+    
+    # Tight layout to prevent cutting off labels
+    plt.tight_layout()
+    
+    print("current path", os.getcwd())
+    # Save the plot to a file for debugging
+    plt.savefig('debug_plot.png', format='png', dpi=300)
+    print(f"plot saved on {os.getcwd()}/debug_plot.png")
+    # Save the plot to a BytesIO object
+    img = io.BytesIO()
+    plt.savefig(img, format='png', dpi=300)
+    img.seek(0)
+    
+    return send_file(img, mimetype='image/png')
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

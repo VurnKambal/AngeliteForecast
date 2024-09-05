@@ -36,7 +36,7 @@ function InternalPage() {
 
         fetchDepartments();
     }, []);
-
+    
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({
@@ -69,6 +69,7 @@ function InternalPage() {
     };
 
     const handleSubmit = async (e) => {
+        let predictions = [];
         e.preventDefault();
         try {
             console.log(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/process-data`)
@@ -106,6 +107,32 @@ function InternalPage() {
             } catch (error) {
                 console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/predict Error submitting form:`, error);
                 document.getElementById('Prediction').innerHTML = 'Error submitting form';
+            }
+
+            try {
+                console.log(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/plot`, predictions.data)
+                const plotResponse = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/plot`, predictions.data, {
+                    responseType: 'blob', // Important for getting binary data
+                });
+                console.log('Plot Response:', plotResponse.data);
+                
+                // Create a URL for the blob
+                const plotBlob = new Blob([plotResponse.data], { type: 'image/png' });
+                const plotUrl = URL.createObjectURL(plotBlob);
+                
+                // Create an image element and set the src to the blob URL
+                const plotImage = new Image();
+                plotImage.src = plotUrl;
+                plotImage.alt = `Enrollment trend for ${formData.Major}`;
+                plotImage.hidden = false;
+                
+                // Append the image to the plot div
+                const plotDiv = document.getElementById('plot');
+                plotDiv.innerHTML = ''; // Clear any existing content
+                plotDiv.appendChild(plotImage);
+            } catch (error) {
+                console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/plot Error submitting form:`, error);
+                document.getElementById('plot').innerHTML = 'Error submitting form';
             }
         } catch (error) {
             console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/process-data Error submitting form:`, error);
@@ -173,7 +200,11 @@ function InternalPage() {
                 <button type="submit">Submit</button>
             </form>
             <div id="Prediction"></div>
+            <div id="plot"></div>
+            <img id="plotImage" alt="Enrollment trend plot" hidden style={{width: '80%', height: '80%'}}/>
         </div>
+        
+        
     );
 }
 

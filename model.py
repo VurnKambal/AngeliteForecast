@@ -226,6 +226,8 @@ def initialize_models():
         "xgb": xgb_model,
         "ensembled": ensembled_models
     }
+    # models = joblib.load("models/ensembled_models.pkl")
+
     return models
 
 def clean_data(df):
@@ -342,10 +344,14 @@ def clean_data(df):
     df = df[~df['Major'].isin(drop_majors)]
 
     # Step 6: Combine majors with the same name within the same semester
-    df = df.groupby(['Start_Year', 'Semester', 'Major', 'Department'], as_index=False).sum(["1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year", "TOTAL"])
+    df = df.groupby(['Start_Year', 'Semester', 'Major', 'Department'], as_index=False).sum(["1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year", "Grade_12", "TOTAL"])
+    print(df[df["Department"] == "SHS"])
     shs_df = df[df["Department"] == "SHS"].pivot_table(index=["Start_Year", "Semester"], columns="Major", values="Grade_12").reset_index()
+    shs_df["Start_Year"] += 1
+    shs_df = shs_df.fillna(0)
+    # shs_df = shs_df.rename(columns={col: f"{col}_lag_1" for col in shs_df.columns.drop(["Start_Year", "Semester"])})
 
-    print("zzzzzzzzzz", df.columns)
+    print("zzzzzzzzzz", shs_df)
     df = df[~df['Department'].isin(['GS', 'JHS', 'SHS', 'HAUSPELL'])]
     df = df[~df['Major'].isin(['TOTAL', 'GRAND TOTAL'])]
     print(df)
@@ -357,7 +363,7 @@ def clean_data(df):
     return df
 
 
-def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df):
+def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, train=False):
     
     print(enrollment_df.columns)
     dept_encoder = joblib.load('data/dept_encoder.pkl')
@@ -365,23 +371,34 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     dept_pca = joblib.load('data/dept_pca.pkl')
     major_pca = joblib.load('data/major_pca.pkl')
     columns = joblib.load("data/columns.pkl")
-   
+    print("enrollment_df", enrollment_df[enrollment_df["Major"] == "SHS"])
     enrollment_df = clean_data(enrollment_df)
+    
+    # Combine user input with past major data
+    major = user_input['Major'].iloc[0]
+    start_year = user_input['Start_Year'].iloc[0]
+    semester = user_input['Semester'].iloc[0]
+
     # Create a DataFrame from user input
     if user_input is not None:
-        df = pd.DataFrame(user_input)
+
+        # Filter out rows from enrollment_df that match the Start_Year and Semester of the user input
+        enrollment_df = enrollment_df.query(f"Start_Year < {start_year} or (Start_Year == {start_year} and Semester <= {semester})")
+
     else:
-        df = enrollment_df
         columns.insert(3, "1st_Year")
+
     
-    print("df", df)
+    print("df", enrollment_df)
 
     # Create prediction DataFrame
-    X_pred = pd.DataFrame()
-    X_pred["Major"] = df["Major"]
-    X_pred["Department"] = df["Department"]
-    X_pred["Start_Year"] = df["Start_Year"]
-    X_pred["Semester"] = df["Semester"]
+    X_pred = enrollment_df[["Major", "Department", "Start_Year", "Semester"]].copy()
+    # X_pred = pd.DataFrame()
+    # X_pred["Major"] = df["Major"]
+    # X_pred["Department"] = df["Department"]
+    # X_pred["Start_Year"] = df["Start_Year"]
+    # X_pred["Semester"] = df["Semester"]
+
     X_pred["Start_Month"] = X_pred["Semester"].apply(determine_start_month)
     
     # Process admission data
@@ -444,11 +461,14 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     # Drop unnecessary columns
     X_pred = X_pred.drop(columns=["Year", "Month"])
 
+    enrollment_df = create_lag_features(enrollment_df, lag_steps=1, target="TOTAL")
+    
+
+    print("enrollment_df", enrollment_df)
+    
     enrollment_df = create_lag_features(enrollment_df, lag_steps=1)
     enrollment_df = create_rolling_std(enrollment_df, lag_steps=1, window_size=3)
-    enrollment_df = create_lag_features(enrollment_df, lag_steps=1, target="TOTAL")
-
-    X_pred = X_pred.merge(enrollment_df, on=["Major", "Department", "Start_Year", "Semester"], how="left")
+    enrollment_df = enrollment_df.query("Start_Year > 2018")
 
     # Step 1: Group by year and major to get the sum of students in each major for each year
     grouped = enrollment_df.groupby(['Start_Year', 'Semester', 'Major'])['1st_Year_lag_1'].sum().reset_index()
@@ -456,14 +476,21 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     # Step 2: Calculate the total number of students for each year
     total_students_per_year = grouped.groupby(['Start_Year', 'Semester'])['1st_Year_lag_1'].sum().reset_index()
     total_students_per_year.rename(columns={'1st_Year_lag_1': 'Total_1st_Year_Students_lag_1'}, inplace=True)
+    print("enrollment_df", enrollment_df, "\n\n\n\n\n")
+ 
 
     # Step 3: Merge the total students per year with the grouped data
     distribution_df = pd.merge(grouped, total_students_per_year, on=['Start_Year', 'Semester'])
 
     # Step 4: Calculate the percentage distribution of each major
     distribution_df['Percentage_Distribution_lag_1'] = (distribution_df['1st_Year_lag_1'] / distribution_df['Total_1st_Year_Students_lag_1']) * 100
+    
+    enrollment_df = enrollment_df.query(f"Major == '{major}'")
+    distribution_df = distribution_df.query(f"Major == '{major}'")
+    print("enrollment_df", enrollment_df)
+    X_pred = X_pred.merge(enrollment_df, on=["Major", "Department", "Start_Year", "Semester"], how="left")
 
-
+    print(len(X_pred), X_pred)
     X_pred = X_pred.merge(distribution_df.drop(columns=["1st_Year_lag_1"]), on=['Start_Year', 'Semester', 'Major'])
     # Encode Department and Major
     dept_encoded = dept_encoder.transform(X_pred[['Department']])
@@ -493,8 +520,9 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
         print(f"Warning: The following columns are missing: {missing_columns}")
         # You might want to handle missing columns here, e.g., by adding them with default values
 
+    print(X_pred.info())
     # Ensure all columns in X_pred are in the correct order
-    X_pred = X_pred[columns]
+    X_pred = X_pred[columns].fillna(0)
     return X_pred
 
 # Helper functions (create_rolling_std, create_lag_features) should be defined here
@@ -504,3 +532,4 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
 
 # Save models
 # joblib.dump(models, "models/final/ensemble_models.pkl")
+
