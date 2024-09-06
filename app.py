@@ -260,7 +260,7 @@ def make_predictions(selectedModel, models, data, weight_ses=0.2, weight_rf=0.4,
     
 
 # Endpoint to train models
-@app.route('/train', methods=['POST'])
+@app.route('/api/train', methods=['POST'])
 def train():
     data = request.get_json()
 
@@ -269,7 +269,7 @@ def train():
     return jsonify({"message": "Models trained successfully"}), 200
 
 # Endpoint to make predictions
-@app.route('/predict', methods=['POST'])
+@app.route('/api/predict', methods=['POST'])
 def predict():
     data = request.get_json()
     processed_data = data['processed_data']
@@ -282,7 +282,7 @@ def predict():
     return jsonify(float(prediction)), 200
 
 # New route to process data from React app
-@app.route('/process-data', methods=['POST'])
+@app.route('/api/process-data', methods=['POST'])
 def process_data(train=False):
     global models, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df
     print(models)
@@ -324,7 +324,7 @@ def process_data(train=False):
     return jsonify(response), 200
 
 
-@app.route('/plot', methods=['POST'])
+@app.route('/api/plot', methods=['POST'])
 def plot():
     # Read the prediction results from the CSV file
     df = pd.read_csv('prediction_results.csv')

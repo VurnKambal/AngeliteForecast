@@ -19,7 +19,7 @@ function InternalPage() {
     });
 
     const [selectedModel, setSelectedModel] = useState('XGBoost');
-    const [departments, setDepartments] = useState([]);
+    const [departments, setDepartments] = useState([]);~
     const [majors, setMajors] = useState([]);
 
     useEffect(() => {
@@ -72,8 +72,8 @@ function InternalPage() {
         let predictions = [];
         e.preventDefault();
         try {
-            console.log(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/process-data`)
-            const processDataResponse = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/process-data`, formData);
+            console.log(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data`)
+            const processDataResponse = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data`, formData);
             console.log('Process Data Response:', processDataResponse.data);
 
             if (processDataResponse.data.status !== 'success' || !processDataResponse.data.processed_data) {
@@ -96,7 +96,7 @@ function InternalPage() {
             
             try {
                 console.log('Sending to predict:', predictPayload);
-                const predictions = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/predict`, predictPayload);
+                const predictions = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`, predictPayload);
                 console.log('Predictions:', predictions.data);
 
                 // Round off the prediction if it is a float
@@ -105,13 +105,13 @@ function InternalPage() {
                 // Set innerHTML of the Prediction div
                 document.getElementById('Prediction').innerHTML = `Predictions: ${roundedPrediction}`;
             } catch (error) {
-                console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/predict Error submitting form:`, error);
+                console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict Error submitting form:`, error);
                 document.getElementById('Prediction').innerHTML = 'Error submitting form';
             }
 
             try {
-                console.log(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/plot`, predictions.data)
-                const plotResponse = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/plot`, predictions.data, {
+                console.log(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`, predictions.data)
+                const plotResponse = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`, predictions.data, {
                     responseType: 'blob', // Important for getting binary data
                 });
                 console.log('Plot Response:', plotResponse.data);
@@ -131,11 +131,11 @@ function InternalPage() {
                 plotDiv.innerHTML = ''; // Clear any existing content
                 plotDiv.appendChild(plotImage);
             } catch (error) {
-                console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/plot Error submitting form:`, error);
+                console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot Error submitting form:`, error);
                 document.getElementById('plot').innerHTML = 'Error submitting form';
             }
         } catch (error) {
-            console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/process-data Error submitting form:`, error);
+            console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data Error submitting form:`, error);
             document.getElementById('Prediction').innerHTML = 'Error submitting form';
         }
        

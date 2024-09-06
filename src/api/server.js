@@ -1,6 +1,8 @@
 const express = require("express");
 const { Pool } = require("pg");
 const cors = require("cors");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 app.use(express.json());
@@ -13,6 +15,9 @@ const pool = new Pool({
   password: "thesis",
   port: 5432,
 });
+
+const SECRET_KEY = "thesis"
+
 app.get("/api/transactions", async (req, res) => {
   try {
     // Extract query parameters
@@ -165,6 +170,68 @@ app.get("/api/majors", async (req, res) => {
   }
 });
 
+
+// Registration endpoint
+app.post("/api/register", async (req, res) => {
+  console.log(req.body);
+  const { name, email, password, confirmPassword } = req.body;
+  try {
+    // Check if password and confirmPassword match
+    if (password !== confirmPassword) {
+      console.log("Passwords do not match");
+      return res.status(400).json({ error: "Passwords do not match" });
+    }
+    console.log("zzzz")
+
+    // Check if username already exists
+    const usernameCheck = await pool.query("SELECT * FROM users WHERE username = $1", [name]);
+    console.log("aaaa", usernameCheck.rows.length)
+    if (usernameCheck.rows.length > 0) {
+      console.log("Username already exists");
+      return res.status(400).json({ error: "Username already exists" });
+    }
+
+    // Check if email already exists
+    const emailCheck = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    if (emailCheck.rows.length > 0) {
+      console.log("Email already exists");
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
+      [name, email, hashedPassword]
+    );
+    res.status(201).json({ userId: result.rows[0].id });
+  } catch (err) {
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Login endpoint
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    const user = result.rows[0];
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: "1h" });
+    res.json({ token });
+  } catch (err) {
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 app.listen(5000, () => {
   console.log("Server is running on port 5000");
