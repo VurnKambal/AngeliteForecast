@@ -16,7 +16,7 @@ function Register() {
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [registerObj, setRegisterObj] = useState(INITIAL_REGISTER_OBJ);fa
+  const [registerObj, setRegisterObj] = useState(INITIAL_REGISTER_OBJ);
 
   const submitForm = async (e) => {
     e.preventDefault();

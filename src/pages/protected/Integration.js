@@ -19,9 +19,10 @@ function InternalPage() {
     });
 
     const [selectedModel, setSelectedModel] = useState('XGBoost');
-    const [departments, setDepartments] = useState([]);~
+    const [departments, setDepartments] = useState([]);
     const [majors, setMajors] = useState([]);
-
+    // const [plot, setPlot] = useState([]);
+    
     useEffect(() => {
         const fetchDepartments = async () => {
             try {
