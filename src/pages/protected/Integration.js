@@ -15,7 +15,7 @@ function InternalPage() {
         Semester: '',
         Department: '',
         Major: '',
-        Year_Level: '1st_Year', // Default Year_Level
+        Year_Level: '', // Default Year_Level
     });
 
     const [selectedModel, setSelectedModel] = useState('XGBoost');
@@ -147,6 +147,16 @@ function InternalPage() {
             <h1>Integrations</h1>
             <form onSubmit={handleSubmit}>
                 <div>
+                    <label>Year Level</label>
+                    <select name="Year_Level" value={formData.Year_Level} onChange={handleChange}>
+                        <option value="" disabled>Select Year Level</option>
+                        <option value="1st_Year">1st Year</option>
+                        <option value="2nd_Year">2nd Year</option>
+                        <option value="3rd_Year">3rd Year</option>
+                        <option value="4th_Year">4th Year</option>
+                    </select>
+                </div>
+                <div>
                     <label>Department</label>
                     <select name="Department" value={formData.Department} onChange={handleDepartmentChange}>
                         <option value="" disabled>Select Department</option>
@@ -168,15 +178,7 @@ function InternalPage() {
                         ))}
                     </select>
                 </div>
-                <div>
-                    <label>Year Level</label>
-                    <select name="Year_Level" value={formData.Year_Level} onChange={handleChange}>
-                        <option value="1st_Year">1st Year</option>
-                        <option value="2nd_Year">2nd Year</option>
-                        <option value="3rd_Year">3rd Year</option>
-                        <option value="4th_Year">4th Year</option>
-                    </select>
-                </div>
+                
                 {Object.keys(formData).map((key) => (
                     key !== 'Department' && key !== 'Major' && key !== 'Year_Level' && (
                         <div key={key}>
