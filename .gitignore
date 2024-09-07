@@ -31,5 +31,6 @@ venv/
 
 
 app copy.py
+database copy.ipynb
 
 debug_plot.png

@@ -119,7 +119,7 @@ app.get("/api/transactions", async (req, res) => {
 
 app.get("/api/departments", async (req, res) => {
   try {
-    const query = 'SELECT DISTINCT "Department" FROM enrollment  WHERE "Department" != \'SHS\'';
+    const query = 'SELECT DISTINCT department FROM majors ORDER BY department';
     const result = await pool.query(query);
     res.json(result.rows);
   } catch (err) {
@@ -127,7 +127,6 @@ app.get("/api/departments", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 // Endpoint to fetch majors based on department
 app.get("/api/majors", async (req, res) => {
@@ -139,25 +138,18 @@ app.get("/api/majors", async (req, res) => {
     }
 
     const query = `
-      WITH max_year AS (
-        SELECT MAX("Start_Year") as max_start_year
-        FROM enrollment
-        WHERE "Department" = $1
-      )
       SELECT 
-        DISTINCT e."Major",
-        my.max_start_year,
+        m.name AS major,
+        m.latest_year AS max_start_year,
         COALESCE(
           (SELECT MAX("Semester") 
            FROM enrollment 
-           WHERE "Department" = $1 AND "Start_Year" = my.max_start_year),
+           WHERE "Department" = $1 AND "Start_Year" = m.latest_year AND "Major" = m.name),
           1
         ) as max_semester
-      FROM enrollment e
-      CROSS JOIN max_year my
-      WHERE e."Department" = $1
-        AND e."Start_Year" = my.max_start_year
-      ORDER BY e."Major"
+      FROM majors m
+      WHERE m.department = $1
+      ORDER BY m.name
     `;
     
     const values = [department];
@@ -169,7 +161,6 @@ app.get("/api/majors", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 // Registration endpoint
 app.post("/api/register", async (req, res) => {

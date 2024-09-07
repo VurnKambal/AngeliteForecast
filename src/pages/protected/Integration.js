@@ -151,8 +151,8 @@ function InternalPage() {
                     <select name="Department" value={formData.Department} onChange={handleDepartmentChange}>
                         <option value="" disabled>Select Department</option>
                         {departments.map((dept) => (
-                            <option key={dept.Department} value={dept.Department}>
-                                {dept.Department}
+                            <option key={dept.department} value={dept.department}>
+                                {dept.department}
                             </option>
                         ))}
                     </select>
@@ -162,8 +162,8 @@ function InternalPage() {
                     <select name="Major" value={formData.Major} onChange={handleChange} disabled={!formData.Department}>
                         <option value="" disabled>Select Major</option>
                         {majors.map((major) => (
-                            <option key={major.Major} value={major.Major}>
-                                {major.Major}
+                            <option key={major.major} value={major.major}>
+                                {major.major}
                             </option>
                         ))}
                     </select>
