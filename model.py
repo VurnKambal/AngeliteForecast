@@ -1,12 +1,23 @@
+import json
+from flask import jsonify
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import xgboost as xgb
+
 import joblib
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+from statsmodels.tsa.api import SimpleExpSmoothing
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.svm import SVR
+
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 similar_majors_dict = {
     # CCJEF
@@ -190,41 +201,22 @@ def determine_start_month(semester):
 
 
 
-from sqlalchemy import create_engine
-import pandas as pd
-
-def connect_to_database(username, password, host='localhost', port=5432, db_name='angeliteforecast'):
-    """Create a database connection."""
-    connection_string = f'postgresql://{username}:{password}@{host}:{port}/{db_name}'
-    engine = create_engine(connection_string)
-    return engine
-
-def query_data(engine):
-    # Query data from the database using the provided engine
-    df = pd.read_sql("SELECT * FROM enrollment", engine)            # Changed to database query
-    cpi_df = pd.read_sql("SELECT * FROM cpi_education", engine)          # Changed to database query
-    inflation_df = pd.read_sql("SELECT * FROM inflation_rate", engine)   # Changed to database query
-    admission_df = pd.read_sql("SELECT * FROM admission", engine)   # Changed to database query
-    hfce_df = pd.read_sql("SELECT * FROM hfce", engine)                  # Changed to database query
-
-    return df, cpi_df, inflation_df, admission_df, hfce_df
-
-
-
-# Example usage
-if __name__ == "__main__":
-    engine = connect_to_database('postgres', 'thesis')
-    data = query_data(engine)
 
 def initialize_models():
     # Load the models
     rf_model = joblib.load("models/rf_model.pkl")
     xgb_model = joblib.load("models/xgb_model.pkl")
     ensembled_models = joblib.load("models/ensembled_models.pkl")
+    lr_models = joblib.load("models/lr_models.pkl")
+    knn_model = joblib.load("models/knn_model.pkl")
+    svr_model = joblib.load("models/svr_model.pkl")
     models = {
         "rf": rf_model,
         "xgb": xgb_model,
-        "ensembled": ensembled_models
+        "ensembled": ensembled_models,
+        "lr": lr_models,
+        "knn": knn_model,
+        "svr": svr_model
     }
     # models = joblib.load("models/ensembled_models.pkl")
 
@@ -349,7 +341,7 @@ def clean_data(df):
     shs_df = df[df["Department"] == "SHS"].pivot_table(index=["Start_Year", "Semester"], columns="Major", values="Grade_12").reset_index()
     shs_df["Start_Year"] += 1
     shs_df = shs_df.fillna(0)
-    # shs_df = shs_df.rename(columns={col: f"{col}_lag_1" for col in shs_df.columns.drop(["Start_Year", "Semester"])})
+    shs_df = shs_df.rename(columns={col: f"{col}_lag_1" for col in shs_df.columns.drop(["Start_Year", "Semester"])})
 
     print("zzzzzzzzzz", shs_df)
     df = df[~df['Department'].isin(['GS', 'JHS', 'SHS', 'HAUSPELL'])]
@@ -485,6 +477,8 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     # Step 4: Calculate the percentage distribution of each major
     distribution_df['Percentage_Distribution_lag_1'] = (distribution_df['1st_Year_lag_1'] / distribution_df['Total_1st_Year_Students_lag_1']) * 100
     
+    print(major, distribution_df.iloc[:,3:])
+    distribution_df.to_csv("distribution_df.csv")
     enrollment_df = enrollment_df.query(f"Major == '{major}'")
     distribution_df = distribution_df.query(f"Major == '{major}'")
     print("enrollment_df", enrollment_df)
@@ -533,3 +527,225 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
 # Save models
 # joblib.dump(models, "models/final/ensemble_models.pkl")
 
+
+
+
+
+# Function to train models for each major
+def train_models(engine, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, end_year=None):
+    """
+    engine: SQLAlchemy engine object
+    data: DataFrame containing the data
+    weight_ses: weight for the SES model
+    weight_rf: weight for the Random Forest model
+    weight_xgb: weight for the XGBoost model
+    end_year: end year for training data
+    """
+    # Endpoint to train models
+    df = pd.DataFrame(data)
+    
+    # Tuned parameters during past training
+    params = json.load(open("data/tuned_params.json"))
+    rf_params = params["rf"]
+    xgb_params = params["xgb"]
+
+    print("df", df)
+    
+    # Determine the end year for training data
+    if end_year is None:
+        end_year = df['Start_Year'].max() - 1
+    
+    # Train Random Forest model
+    X_train = df[df['Start_Year'] <= end_year].drop(columns=["1st_Year", "Major"])
+    y_train = df[df['Start_Year'] <= end_year]['1st_Year']
+    rf_model = RandomForestRegressor(**rf_params, random_state=42)
+    rf_model.fit(X_train, y_train)
+    
+    # Train XGBoost DART model
+    dtrain = xgb.DMatrix(X_train, label=y_train)
+    xgb_model = xgb.train(xgb_params, dtrain)
+    
+    # Train SES model and ensemble with Random Forest
+    models = {
+        "rf": rf_model,
+        "xgb": xgb_model,
+        "ses": {},
+    }
+    for major in df['Major'].unique():
+        major_data = df[(df['Major'] == major) & (df['Start_Year'] <= end_year)]
+        X_major_train = major_data.drop(columns=['Major', 'Start_Year', '1st_Year'])
+        y_major_train = major_data['1st_Year']
+        if len(y_major_train) > 1:
+            # Train SES model
+            ses_model = SimpleExpSmoothing(y_major_train).fit(smoothing_level=0.8, optimized=False)
+            models["ses"][major] = ses_model
+        else:
+            print(f"Skipping SES model for {major} because it has less than 2 data points.")
+    
+    return models
+
+# Function to make predictions
+def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1):
+    """
+    engine: SQLAlchemy engine objectl
+    selectedModel: selected model for prediction
+    models: models for prediction
+    data: DataFrame containing the data
+    weight_ses: weight for the SES model
+    weight_rf: weight for the Random Forest model
+    weight_xgb: weight for the XGBoost model
+    engine: SQLAlchemy engine object
+    """
+    major = data['Major'][0]
+    pred_year = data['Start_Year'].iloc[-1]
+    pred_semester = data['Semester'].iloc[-1]
+    major_data = data[data['Major'] == major]
+    predictions = {}
+    X_major = major_data.drop(columns=['Major']).reset_index(drop=True)
+    print("X_major", X_major)
+    
+    # Split X_major into train and pred
+    X_major_train = X_major[(X_major['Start_Year'] < pred_year) | ((X_major['Start_Year'] == pred_year) & (X_major['Semester'] < pred_semester))]
+    X_major_pred = X_major[(X_major['Start_Year'] == pred_year) & (X_major['Semester'] == pred_semester)]
+    print("pred_year", data)
+    print(X_major_train, "\n\n\n", X_major_pred)
+    match(selectedModel.lower()):
+        case "random_forest":
+            rf_model = models["rf"]
+            y_major_train_pred = rf_model.predict(X_major_train)
+            y_major_pred = rf_model.predict(X_major_pred)
+            predictions = {
+                "train_pred": y_major_train_pred,
+                "test_pred": y_major_pred
+            }
+            print("predictions", predictions)
+        
+        case "xgboost":     
+            xgb_model = models["xgb"]
+
+            dtrain = xgb.DMatrix(X_major_train)
+            dpred = xgb.DMatrix(X_major_pred)
+            try:
+                y_major_train_pred = xgb_model.predict(dtrain)
+                y_major_pred = xgb_model.predict(dpred)
+                predictions = {
+                    "train_pred": y_major_train_pred,
+                    "test_pred": y_major_pred
+                }
+            except Exception as e:
+                print(f"Error during XGBoost prediction: {str(e)}")
+                print("XGBoost model feature names:", xgb_model.feature_names)
+                raise
+            print("predictions", predictions)
+
+        case "linear_regression":
+            if "lr" not in models:
+                lr_model = LinearRegression()
+                lr_model.fit(X_major_train, y_major_train)
+                models["lr"] = lr_model
+            else:
+                lr_model = models["lr"].get(major)
+                print(lr_model)
+
+            y_major_train_pred = lr_model.predict(X_major_train)
+            y_major_pred = lr_model.predict(X_major_pred)
+            predictions = {
+                "train_pred": y_major_train_pred,
+                "test_pred": y_major_pred
+            }
+
+        case "knn":
+            if "knn" not in models:
+                knn_model = KNeighborsRegressor(n_neighbors=5)  # You can adjust n_neighbors
+                knn_model.fit(X_major_train, X_major_train['TOTAL'])
+                models["knn"] = knn_model
+            else:
+                knn_model = models["knn"]
+            y_major_train_pred = knn_model.predict(X_major_train)
+            y_major_pred = knn_model.predict(X_major_pred)
+            predictions = {
+                "train_pred": y_major_train_pred,
+                "test_pred": y_major_pred
+            }
+
+        case "svr":
+            if "svr" not in models:
+                svr_model = SVR(kernel='rbf')  # You can adjust the kernel
+                svr_model.fit(X_major_train, X_major_train['TOTAL'])
+                models["svr"] = svr_model
+            else:
+                svr_model = models["svr"]
+            y_major_train_pred = svr_model.predict(X_major_train)
+            y_major_pred = svr_model.predict(X_major_pred)
+            predictions = {
+                "train_pred": y_major_train_pred,
+                "test_pred": y_major_pred
+            }
+        
+        case "ensemble":
+            # Ensure the weights sum to 1
+            total_weight = weight_ses + weight_rf + weight_xgb
+            weight_ses /= total_weight
+            weight_rf /= total_weight
+            weight_xgb /= total_weight
+
+            rf_model = models["rf"]
+            xgb_model = models["xgb"]
+            ensembled_models = models["ensembled"].get(major)
+            print("ensembled_models", models)
+            print("\n\n\ndata     ", data)
+            major = data['Major'][0]
+            ses_model = ensembled_models["ses"]
+            
+            dtrain = xgb.DMatrix(X_major_train)
+            dpred = xgb.DMatrix(X_major_pred)
+            print("data ", X_major, "\n", X_major.columns)
+
+            y_major_train_pred_ses = ses_model.fittedvalues
+            y_major_train_pred_rf = rf_model.predict(X_major_train)
+            y_major_train_pred_xgb = xgb_model.predict(dtrain)
+            print(len(y_major_train_pred_ses), len(y_major_train_pred_rf), len(y_major_train_pred_xgb))
+            
+            y_major_train_pred_combined = (weight_ses * y_major_train_pred_ses +
+                                           weight_rf * y_major_train_pred_rf +
+                                           weight_xgb * y_major_train_pred_xgb)
+            
+            y_major_pred_ses = ses_model.forecast(steps=len(X_major_pred))
+            y_major_pred_rf = rf_model.predict(X_major_pred)
+            y_major_pred_xgb = xgb_model.predict(dpred)
+
+            y_major_pred_combined = (weight_ses * y_major_pred_ses +
+                                     weight_rf * y_major_pred_rf +
+                                     weight_xgb * y_major_pred_xgb)
+
+            predictions = {
+                "train_pred": y_major_train_pred_combined,
+                "test_pred": y_major_pred_combined
+            }
+
+        case _:
+            return jsonify({"message": "Invalid model"}), 400
+        
+    #   Save predictions to csv
+    predictions_df = pd.DataFrame({
+        'Prediction': np.concatenate([
+            predictions["train_pred"], 
+            predictions["test_pred"]
+            ]),
+        'Is_Train': np.concatenate([
+            np.ones(len(predictions["train_pred"])),
+            np.zeros(len(predictions["test_pred"]))
+            ])
+    })
+    predictions_df['Is_Train'] = predictions_df['Is_Train'].astype(bool)
+    print("predictions_df", predictions_df)
+    
+    # Concatenate predictions_df with major_data
+    predictions_df = pd.concat([major_data[["Start_Year", "Semester", "Major"]], predictions_df], axis=1)
+    
+    # Save the concatenated data to CSV
+    predictions_df.to_csv('prediction_results.csv', index=False)
+
+    # Return the last prediction from predictions_df
+    return predictions_df.iloc[-1]["Prediction"]
+    

@@ -161,8 +161,8 @@ function InternalPage() {
                     <select name="Department" value={formData.Department} onChange={handleDepartmentChange}>
                         <option value="" disabled>Select Department</option>
                         {departments.map((dept) => (
-                            <option key={dept.department} value={dept.department}>
-                                {dept.department}
+                            <option key={dept.Department} value={dept.Department}>
+                                {dept.Department}
                             </option>
                         ))}
                     </select>
@@ -195,9 +195,19 @@ function InternalPage() {
                 <div>
                     <label>Model</label>
                     <select value={selectedModel} onChange={handleModelChange}>
-                        <option value="XGBoost">XGBoost</option>
-                        <option value="RandomForest">Random Forest</option>
-                        <option value="Ensemble">Ensemble</option>
+                        <option value="" disabled>Select Model</option>
+                        <optgroup label="Tree-based Models">
+                            <option value="XGBoost">XGBoost</option>
+                            <option value="Random_Forest">Random Forest</option>
+                        </optgroup>
+                        <optgroup label="Ensemble Models">
+                            <option value="Ensemble">Ensemble</option>
+                        </optgroup>
+                        <optgroup label="Classical Models">
+                            <option value="Linear_Regression">Linear Regression</option>
+                            <option value="KNN">KNN</option>
+                            <option value="SVR">SVR</option>
+                        </optgroup>
                     </select>
                 </div>
                 <button type="submit">Submit</button>

@@ -8,17 +8,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import joblib
-import xgboost as xgb
-
-from statsmodels.tsa.api import SimpleExpSmoothing
-from sklearn.ensemble import RandomForestRegressor
-from xgboost import XGBRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 from sqlalchemy import create_engine
 
-from model import initialize_models, preprocess_data, create_lag_features, create_rolling_std, create_rolling_mean, ensemble_metrics
-
+from model import initialize_models, preprocess_data
+from model import make_predictions, train_models
 
 app = Flask(__name__)
 CORS(app)
@@ -107,177 +101,29 @@ def query_data(_engine):  # df_included=True, cpi_df_included=True, inflation_df
 ENGINE = connect_to_database(USERNAME, PASSWORD, HOST, PORT, DATABASE)
 
 
-# Function to train models for each major
-def train_models(data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, engine=ENGINE):
- # Endpoint to train models
-    df = pd.DataFrame(data)
-    
-    # Tuned parameters during past training
-    params = json.load(open("data/tuned_params.json"))
-    rf_params = params["rf"]
-    xgb_params = params["xgb"]
-
-    print("df", df)
-    # Train Random Forest model
-    X_train = df.query("2018 < Start_Year < 2024").drop(columns=["1st_Year", "Major"])# 'Year_Level'])
-    y_train = df.query("2018 < Start_Year < 2024")['1st_Year']
-    rf_model = RandomForestRegressor(**rf_params, random_state=42)
-    rf_model.fit(X_train, y_train)
-    
-    # Train XGBoost DART model
-    dtrain = xgb.DMatrix(X_train, label=y_train)
-    xgb_model = xgb.train(xgb_params, dtrain)
-    
-    # Train SES model and ensemble with Random Forest
-    models = {
-        "rf": rf_model,
-        "xgb": xgb_model,
-        "ses": {},
-    }
-    for major in df['Major'].unique():
-        major_data = df[df['Major'] == major]
-        X_major_train = major_data.drop(columns=['Major', 'Start_Year', '1st_Year'])
-        y_major_train = major_data['1st_Year']
-        if len(y_major_train) > 1:
-            # Train SES model
-            ses_model = SimpleExpSmoothing(y_major_train).fit(smoothing_level=0.8, optimized=False)
-            models["ses"][major] = ses_model
-        else:
-            print(f"Skipping SES model for {major} because it has less than 2 data points.")
-    
-    return models
-
-# Function to make predictions
-def make_predictions(selectedModel, models, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, engine=ENGINE):
-    major = data['Major'][0]
-    pred_year = data['Start_Year'].iloc[-1]
-    pred_semester = data['Semester'].iloc[-1]
-    major_data = data[data['Major'] == major]
-    predictions = {}
-    X_major = major_data.drop(columns=['Major']).reset_index(drop=True)
-    print("X_major", X_major)
-    
-    # Split X_major into train and pred
-    X_major_train = X_major[(X_major['Start_Year'] < pred_year) | ((X_major['Start_Year'] == pred_year) & (X_major['Semester'] < pred_semester))]
-    X_major_pred = X_major[(X_major['Start_Year'] == pred_year) & (X_major['Semester'] == pred_semester)]
-    print("pred_year", data)
-    print(X_major_train, "\n\n\n", X_major_pred)
-    match(selectedModel.lower()):
-        case "randomforest":
-            rf_model = models["rf"]
-            y_major_train_pred = rf_model.predict(X_major_train)
-            y_major_pred = rf_model.predict(X_major_pred)
-            predictions = {
-                "train_pred": y_major_train_pred,
-                "test_pred": y_major_pred
-            }
-            print("predictions", predictions)
-        
-        case "xgboost":     
-            xgb_model = models["xgb"]
-
-            dtrain = xgb.DMatrix(X_major_train)
-            dpred = xgb.DMatrix(X_major_pred)
-            try:
-                y_major_train_pred = xgb_model.predict(dtrain)
-                y_major_pred = xgb_model.predict(dpred)
-                predictions = {
-                    "train_pred": y_major_train_pred,
-                    "test_pred": y_major_pred
-                }
-            except Exception as e:
-                print(f"Error during XGBoost prediction: {str(e)}")
-                print("XGBoost model feature names:", xgb_model.feature_names)
-                raise
-            print("predictions", predictions)
-        
-        case "ensemble":
-            # Ensure the weights sum to 1
-            total_weight = weight_ses + weight_rf + weight_xgb
-            weight_ses /= total_weight
-            weight_rf /= total_weight
-            weight_xgb /= total_weight
-
-            rf_model = models["rf"]
-            xgb_model = models["xgb"]
-            ensembled_models = models["ensembled"].get(major)
-
-            print("\n\n\ndata     ", data)
-            major = data['Major'][0]
-            ses_model = ensembled_models["ses"]
-            
-            dtrain = xgb.DMatrix(X_major_train)
-            dpred = xgb.DMatrix(X_major_pred)
-            print("data ", X_major, "\n", X_major.columns)
-
-            y_major_train_pred_ses = ses_model.fittedvalues
-            y_major_train_pred_rf = rf_model.predict(X_major_train)
-            y_major_train_pred_xgb = xgb_model.predict(dtrain)
-            print(len(y_major_train_pred_ses), len(y_major_train_pred_rf), len(y_major_train_pred_xgb))
-            
-            y_major_train_pred_combined = (weight_ses * y_major_train_pred_ses +
-                                           weight_rf * y_major_train_pred_rf +
-                                           weight_xgb * y_major_train_pred_xgb)
-            
-            y_major_pred_ses = ses_model.forecast(steps=len(X_major_pred))
-            y_major_pred_rf = rf_model.predict(X_major_pred)
-            y_major_pred_xgb = xgb_model.predict(dpred)
-
-            y_major_pred_combined = (weight_ses * y_major_pred_ses +
-                                     weight_rf * y_major_pred_rf +
-                                     weight_xgb * y_major_pred_xgb)
-
-            predictions = {
-                "train_pred": y_major_train_pred_combined,
-                "test_pred": y_major_pred_combined
-            }
-
-        case _:
-            return jsonify({"message": "Invalid model"}), 400
-        
-    #   Save predictions to csv
-    predictions_df = pd.DataFrame({
-        'Prediction': np.concatenate([
-            predictions["train_pred"], 
-            predictions["test_pred"]
-            ]),
-        'Is_Train': np.concatenate([
-            np.ones(len(predictions["train_pred"])),
-            np.zeros(len(predictions["test_pred"]))
-            ])
-    })
-    predictions_df['Is_Train'] = predictions_df['Is_Train'].astype(bool)
-    print("predictions_df", predictions_df)
-    
-    # Concatenate predictions_df with major_data
-    predictions_df = pd.concat([major_data[["Start_Year", "Semester", "Major"]], predictions_df], axis=1)
-    
-    # Save the concatenated data to CSV
-    predictions_df.to_csv('prediction_results.csv', index=False)
-
-    # Return the last prediction from predictions_df
-    return predictions_df.iloc[-1]["Prediction"]
-    
-
 # Endpoint to train models
 @app.route('/api/train', methods=['POST'])
 def train():
     data = request.get_json()
+    selected_model = data.get('model')
+    
+    if not selected_model:
+        return jsonify({"error": "Model type not specified"}), 400
 
-    df = pd.DataFrame(data)
-    models = train_models(df)
-    return jsonify({"message": "Models trained successfully"}), 200
+    df = pd.DataFrame(data['processed_data'])
+    models = train_models(ENGINE, df, selected_model)
+    return jsonify({"message": f"{selected_model.capitalize()} model trained successfully"}), 200
 
 # Endpoint to make predictions
 @app.route('/api/predict', methods=['POST'])
 def predict():
     data = request.get_json()
     processed_data = data['processed_data']
+    print("awewarwarwarwa", processed_data)
     df = pd.DataFrame(processed_data)
-    # models = train_models(df)  # Assuming models are trained on the same data
-    selectedModel  = data['model']
+    selectedModel = data['model']
     
-    prediction = make_predictions(selectedModel, models, df)
+    prediction = make_predictions(ENGINE, selectedModel, models, df)
     print("prediction", prediction)
     return jsonify(float(prediction)), 200
 
@@ -313,7 +159,6 @@ def process_data(train=False):
     processed_data = preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
          
        
-
     response = {
         'status': 'success',
         'message': 'Data processed successfully',
@@ -335,7 +180,7 @@ def plot():
     # Get actual values of major data from the database
     query = f"""
     SELECT "Start_Year", "Semester", "1st_Year"
-    FROM enrollment
+    FROM processed_data
     WHERE "Major" = '{major}'
     ORDER BY "Start_Year", "Semester"
     """

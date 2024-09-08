@@ -119,7 +119,7 @@ app.get("/api/transactions", async (req, res) => {
 
 app.get("/api/departments", async (req, res) => {
   try {
-    const query = 'SELECT DISTINCT department FROM majors ORDER BY department';
+    const query = 'SELECT DISTINCT "Department" FROM processed_data ORDER BY "Department"';
     const result = await pool.query(query);
     res.json(result.rows);
   } catch (err) {
@@ -138,16 +138,31 @@ app.get("/api/majors", async (req, res) => {
     }
 
     const query = `
+      WITH latest_data AS (
+        SELECT 
+          "Major",
+          MAX("Start_Year") AS max_year
+        FROM enrollment
+        WHERE "Department" = $1
+        GROUP BY "Major"
+      ),
+      latest_semester AS (
+        SELECT 
+          e."Major",
+          e."Start_Year",
+          MAX(e."Semester") AS max_semester
+        FROM enrollment e
+        JOIN latest_data ld ON e."Major" = ld."Major" AND e."Start_Year" = ld.max_year
+        WHERE e."Department" = $1
+        GROUP BY e."Major", e."Start_Year"
+      )
       SELECT 
         m.name AS major,
-        m.latest_year AS max_start_year,
-        COALESCE(
-          (SELECT MAX("Semester") 
-           FROM enrollment 
-           WHERE "Department" = $1 AND "Start_Year" = m.latest_year AND "Major" = m.name),
-          1
-        ) as max_semester
+        COALESCE(ld.max_year, m.latest_year) AS max_start_year,
+        COALESCE(ls.max_semester, 1) AS max_semester
       FROM majors m
+      LEFT JOIN latest_data ld ON m.name = ld."Major"
+      LEFT JOIN latest_semester ls ON m.name = ls."Major"
       WHERE m.department = $1
       ORDER BY m.name
     `;
@@ -155,6 +170,7 @@ app.get("/api/majors", async (req, res) => {
     const values = [department];
 
     const result = await pool.query(query, values);
+    console.log(result.rows);
     res.json(result.rows);
   } catch (err) {
     console.error("Error occurred:", err);
