@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../features/common/headerSlice';
 import axios from 'axios';
+import TitleCard from "../../components/Cards/TitleCard";
 
 function InternalPage() {
     const dispatch = useDispatch();
@@ -15,21 +16,22 @@ function InternalPage() {
         Semester: '',
         Department: '',
         Major: '',
-        Year_Level: '', // Default Year_Level
+        Year_Level: '1st_Year',
     });
 
     const [selectedModel, setSelectedModel] = useState('XGBoost');
     const [departments, setDepartments] = useState([]);
     const [majors, setMajors] = useState([]);
-    // const [plot, setPlot] = useState([]);
-    
+
     useEffect(() => {
         const fetchDepartments = async () => {
             try {
-                console.log(`${process.env.REACT_APP_API_BASE_URL}/api/departments`);
                 const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/departments`);
-                console.log(response.data)
-                setDepartments(response.data);
+                if (response.data && Array.isArray(response.data)) {
+                    setDepartments(response.data);
+                } else {
+                    console.error("Unexpected department data structure:", response.data);
+                }
             } catch (error) {
                 console.error("Error fetching departments:", error);
             }
@@ -37,12 +39,12 @@ function InternalPage() {
 
         fetchDepartments();
     }, []);
-    
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({
             ...formData,
-            [name]: value
+            [name]: value,
         });
     };
 
@@ -51,15 +53,18 @@ function InternalPage() {
         setFormData({
             ...formData,
             Department: department,
-            Major: '' // Reset major when department changes
+            Major: '',
         });
 
         try {
-            console.log(`${process.env.REACT_APP_API_BASE_URL}/api/majors`)
             const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/majors`, {
-                params: { department }
+                params: { department },
             });
-            setMajors(response.data);
+            if (response.data && Array.isArray(response.data)) {
+                setMajors(response.data);
+            } else {
+                console.error("Unexpected majors data structure:", response.data);
+            }
         } catch (error) {
             console.error("Error fetching majors:", error);
         }
@@ -73,17 +78,14 @@ function InternalPage() {
         let predictions = [];
         e.preventDefault();
         try {
-            console.log(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data`)
             const processDataResponse = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data`, formData);
-            console.log('Process Data Response:', processDataResponse.data);
-
             if (processDataResponse.data.status !== 'success' || !processDataResponse.data.processed_data) {
                 console.error('Error processing data:', processDataResponse.data);
                 return;
             }
 
             const processedData = JSON.parse(processDataResponse.data.processed_data);
-            const cleanedProcessedData = processedData.map(item => 
+            const cleanedProcessedData = processedData.map(item =>
                 Object.fromEntries(
                     Object.entries(item).map(([key, value]) => [key, value === null ? 0 : value])
                 )
@@ -92,24 +94,18 @@ function InternalPage() {
             const predictPayload = {
                 processed_data: cleanedProcessedData,
                 model: selectedModel,
-                year_level: formData.Year_Level // Include Year_Level in the payload
+                year_level: formData.Year_Level,
             };
-            
+
             try {
-                console.log('Sending to predict:', predictPayload);
-                const predictions = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`, predictPayload);
-                console.log('Predictions:', predictions.data);
-
-                // Round off the prediction if it is a float
+                predictions = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`, predictPayload);
                 const roundedPrediction = Math.round(predictions.data);
-
-                // Set innerHTML of the Prediction div
                 document.getElementById('Prediction').innerHTML = `Predictions: ${roundedPrediction}`;
             } catch (error) {
-                console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict Error submitting form:`, error);
+                console.error("Error submitting form:", error);
                 document.getElementById('Prediction').innerHTML = 'Error submitting form';
             }
-
+            
             try {
                 console.log(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`, predictions.data)
                 const plotResponse = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`, predictions.data, {
@@ -136,88 +132,127 @@ function InternalPage() {
                 document.getElementById('plot').innerHTML = 'Error submitting form';
             }
         } catch (error) {
-            console.error(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data Error submitting form:`, error);
+            console.error("Error submitting form:", error);
             document.getElementById('Prediction').innerHTML = 'Error submitting form';
         }
-       
+        
     };
 
     return (
-        <div>
-            <h1>Integrations</h1>
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Year Level</label>
-                    <select name="Year_Level" value={formData.Year_Level} onChange={handleChange}>
-                        <option value="" disabled>Select Year Level</option>
-                        <option value="1st_Year">1st Year</option>
-                        <option value="2nd_Year">2nd Year</option>
-                        <option value="3rd_Year">3rd Year</option>
-                        <option value="4th_Year">4th Year</option>
-                    </select>
+        <TitleCard title="Forecasting Algorithm" topMargin="mt-2">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6">
+                {/* Department and Major Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Department</span>
+                        </label>
+                        <select
+                            name="Department"
+                            value={formData.Department}
+                            onChange={handleDepartmentChange}
+                            className="select select-bordered w-full"
+                        >
+                            <option value="" disabled>Select Department</option>
+                            {departments.map((dept) => (
+                                <option key={dept.Department} value={dept.Department}>
+                                    {dept.Department}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Major</span>
+                        </label>
+                        <select
+                            name="Major"
+                            value={formData.Major}
+                            onChange={handleChange}
+                            className="select select-bordered w-full"
+                            disabled={!formData.Department}
+                        >
+                            <option value="" disabled>Select Major</option>
+                            {majors.map((major) => (
+                                <option key={major.major} value={major.major}>
+                                    {major.major}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label>Department</label>
-                    <select name="Department" value={formData.Department} onChange={handleDepartmentChange}>
-                        <option value="" disabled>Select Department</option>
-                        {departments.map((dept) => (
-                            <option key={dept.Department} value={dept.Department}>
-                                {dept.Department}
-                            </option>
-                        ))}
-                    </select>
+
+                {/* Year Level and Start Year Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Start Year</span>
+                        </label>
+                        <input
+                            type="text"
+                            name="Start_Year"
+                            value={formData.Start_Year}
+                            onChange={handleChange}
+                            className="input input-bordered w-full"
+                            placeholder="Enter Start Year"
+                        />
+                    </div>
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Year Level</span>
+                        </label>
+                        <select
+                            name="Year_Level"
+                            value={formData.Year_Level}
+                            onChange={handleChange}
+                            className="select select-bordered w-full"
+                        >
+                            <option value="1st_Year">1st Year</option>
+                            <option value="2nd_Year">2nd Year</option>
+                            <option value="3rd_Year">3rd Year</option>
+                            <option value="4th_Year">4th Year</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label>Major</label>
-                    <select name="Major" value={formData.Major} onChange={handleChange} disabled={!formData.Department}>
-                        <option value="" disabled>Select Major</option>
-                        {majors.map((major) => (
-                            <option key={major.major} value={major.major}>
-                                {major.major}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                
-                {Object.keys(formData).map((key) => (
-                    key !== 'Department' && key !== 'Major' && key !== 'Year_Level' && (
-                        <div key={key}>
-                            <label>{key.replace(/_/g, ' ')}</label>
-                            <input
-                                type="text"
-                                name={key}
-                                value={formData[key]}
-                                onChange={handleChange}
-                            />
-                        </div>
-                    )
-                ))}
-                <div>
-                    <label>Model</label>
-                    <select value={selectedModel} onChange={handleModelChange}>
-                        <option value="" disabled>Select Model</option>
-                        <optgroup label="Tree-based Models">
+
+                {/* Semester and Model Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Semester</span>
+                        </label>
+                        <input
+                            type="text"
+                            name="Semester"
+                            value={formData.Semester}
+                            onChange={handleChange}
+                            className="input input-bordered w-full"
+                            placeholder="Enter Semester"
+                        />
+                    </div>
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Model</span>
+                        </label>
+                        <select
+                            value={selectedModel}
+                            onChange={handleModelChange}
+                            className="select select-bordered w-full"
+                        >
                             <option value="XGBoost">XGBoost</option>
-                            <option value="Random_Forest">Random Forest</option>
-                        </optgroup>
-                        <optgroup label="Ensemble Models">
+                            <option value="RandomForest">Random Forest</option>
                             <option value="Ensemble">Ensemble</option>
-                        </optgroup>
-                        <optgroup label="Classical Models">
-                            <option value="Linear_Regression">Linear Regression</option>
-                            <option value="KNN">KNN</option>
-                            <option value="SVR">SVR</option>
-                        </optgroup>
-                    </select>
+                        </select>
+                    </div>
                 </div>
-                <button type="submit">Submit</button>
+
+                <button type="submit" className="btn px-6 btn-sm normal-case btn-primary">Submit</button>
+                <div className="divider"></div>
+                <div id="Prediction" className="text-gray-700 mt-4"></div>
+                <div id="plot"></div>
             </form>
-            <div id="Prediction"></div>
-            <div id="plot"></div>
-            <img id="plotImage" alt="Enrollment trend plot" hidden style={{width: '80%', height: '80%'}}/>
-        </div>
-        
-        
+        </TitleCard>
     );
 }
 
