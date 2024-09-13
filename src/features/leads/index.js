@@ -1,104 +1,179 @@
-import moment from "moment"
-import { useEffect } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import TitleCard from "../../components/Cards/TitleCard"
-import { openModal } from "../common/modalSlice"
-import { deleteLead, getLeadsContent } from "./leadSlice"
-import { CONFIRMATION_MODAL_CLOSE_TYPES, MODAL_BODY_TYPES } from '../../utils/globalConstantUtil'
-import TrashIcon from '@heroicons/react/24/outline/TrashIcon'
-import { showNotification } from '../common/headerSlice'
+import { useEffect, useState } from "react";
+import axios from "axios";
+import TitleCard from "../../components/Cards/TitleCard";
+import FunnelIcon from "@heroicons/react/24/outline/FunnelIcon";
+import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
+import SearchBar from "../../components/Input/SearchBar";
 
-const TopSideButtons = () => {
+const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
+  const [filterParams, setFilterParams] = useState({ department: "" });
+  const [searchText, setSearchText] = useState("");
+  const locationFilters = [
+    "SBA",
+    "SEA",
+    "SAS",
+    "SED",
+    "SHTM",
+    "SNAMS",
+    "SOC",
+    "CCJEF",
+  ];
 
-    const dispatch = useDispatch()
+  const showFiltersAndApply = (department) => {
+    setFilterParams({ department });
+    applyFilter({ department });
+    console.log(`Filter applied: ${department}`);
+  };
 
-    const openAddNewLeadModal = () => {
-        dispatch(openModal({title : "Add New Lead", bodyType : MODAL_BODY_TYPES.LEAD_ADD_NEW}))
+  const removeAppliedFilter = () => {
+    setFilterParams({ department: "" });
+    setSearchText("");
+    removeFilter();
+    console.log("Filter and search reset");
+  };
+
+  useEffect(() => {
+    applySearch(searchText);
+    console.log(`Search applied: ${searchText}`);
+  }, [searchText]);
+
+  return (
+    <div className="inline-block float-right">
+      <SearchBar
+        searchText={searchText}
+        styleClass="mr-4"
+        setSearchText={setSearchText}
+      />
+      {filterParams.department && (
+        <button
+          onClick={removeAppliedFilter}
+          className="btn btn-xs mr-2 btn-active btn-ghost normal-case"
+        >
+          {filterParams.department}
+          <XMarkIcon className="w-4 ml-2" />
+        </button>
+      )}
+      <div className="dropdown dropdown-bottom dropdown-end">
+        <label tabIndex={0} className="btn btn-sm btn-outline">
+          <FunnelIcon className="w-5 mr-2" /> Filter
+        </label>
+        <ul
+          tabIndex={0}
+          className="dropdown-content menu bg-secondary rounded-box z-[1] w-52 p-2 shadow"
+        >
+          {locationFilters.map((l, k) => (
+            <li key={k}>
+              <a onClick={() => showFiltersAndApply(l)}>{l}</a>
+            </li>
+          ))}
+          <div className="divider mt-0 mb-0"></div>
+          <li>
+            <a onClick={removeAppliedFilter}>Remove Filter</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+function Leads() {
+  const [trans, setTrans] = useState([]);
+  const [filterParams, setFilterParams] = useState({ department: "" });
+  const [search, setSearch] = useState("");
+
+  const fetchData = async () => {
+    try {
+      let url = `${process.env.REACT_APP_API_BASE_URL}/api/leads`;
+      const params = [];
+
+      if (filterParams.department) {
+        params.push(
+          `department=${encodeURIComponent(filterParams.department)}`
+        );
+      }
+
+      if (search) {
+        params.push(`search=${encodeURIComponent(search)}`);
+      }
+
+      if (params.length > 0) {
+        url += `?${params.join("&")}`;
+      }
+
+      console.log(`Fetching data with URL: ${url}`);
+
+      const response = await axios.get(url);
+      setTrans(response.data);
+      console.log("Data fetched successfully:", response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
     }
+  };
 
-    return(
-        <div className="inline-block float-right">
-            <button className="btn px-6 btn-sm normal-case btn-primary" onClick={() => openAddNewLeadModal()}>Add New</button>
+  useEffect(() => {
+    fetchData();
+  }, [filterParams, search]);
+
+  const removeFilter = () => {
+    setFilterParams({ department: "" });
+    setSearch("");
+    fetchData();
+  };
+
+  const applyFilter = (params) => {
+    setFilterParams(params);
+  };
+
+  const applySearch = (value) => {
+    setSearch(value);
+  };
+
+  return (
+    <>
+      <TitleCard
+        title="Admission and Enrollment Data"
+        topMargin="mt-2"
+        TopSideButtons={
+          <TopSideButtons
+            applySearch={applySearch}
+            applyFilter={applyFilter}
+            removeFilter={removeFilter}
+          />
+        }
+      >
+        <div className="overflow-x-auto w-full">
+          <table className="table w-full">
+            <thead>
+              <tr>
+                <th>Start Year</th>
+                <th>Department</th>
+                <th>Number of Applicants</th>
+                <th>Number Enrolled</th>
+                <th>Processed Applicants</th>
+                <th>CPI Region 3</th>
+                <th>HFCE Education</th>
+                <th>Inflation Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trans.map((l, k) => (
+                <tr key={k}>
+                  <td>{l.Start_Year}</td>
+                  <td>{l.Department}</td>
+                  <td>{l.Number_of_Applicants}</td>
+                  <td>{l.Number_of_Enrolled_Applicants}</td>
+                  <td>{l.Number_of_Processed_Applicants}</td>
+                  <td>{l.CPI_Region3}</td>
+                  <td>{l.HFCE_Education}</td>
+                  <td>{l.Inflation_Rate}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-    )
+      </TitleCard>
+    </>
+  );
 }
 
-function Leads(){
-
-    const {leads } = useSelector(state => state.lead)
-    const dispatch = useDispatch()
-
-    useEffect(() => {
-        dispatch(getLeadsContent())
-    }, [])
-
-    
-
-    const getDummyStatus = (index) => {
-        if(index % 5 === 0)return <div className="badge">Not Interested</div>
-        else if(index % 5 === 1)return <div className="badge badge-primary">In Progress</div>
-        else if(index % 5 === 2)return <div className="badge badge-secondary">Sold</div>
-        else if(index % 5 === 3)return <div className="badge badge-accent">Need Followup</div>
-        else return <div className="badge badge-ghost">Open</div>
-    }
-
-    const deleteCurrentLead = (index) => {
-        dispatch(openModal({title : "Confirmation", bodyType : MODAL_BODY_TYPES.CONFIRMATION, 
-        extraObject : { message : `Are you sure you want to delete this lead?`, type : CONFIRMATION_MODAL_CLOSE_TYPES.LEAD_DELETE, index}}))
-    }
-
-    return(
-        <>
-            
-            <TitleCard title="Current Leads" topMargin="mt-2" TopSideButtons={<TopSideButtons />}>
-
-                {/* Leads List in table format loaded from slice after api call */}
-            <div className="overflow-x-auto w-full">
-                <table className="table w-full">
-                    <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email Id</th>
-                        <th>Created At</th>
-                        <th>Status</th>
-                        <th>Assigned To</th>
-                        <th></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                        {
-                            leads.map((l, k) => {
-                                return(
-                                    <tr key={k}>
-                                    <td>
-                                        <div className="flex items-center space-x-3">
-                                            <div className="avatar">
-                                                <div className="mask mask-squircle w-12 h-12">
-                                                    <img src={l.avatar} alt="Avatar" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div className="font-bold">{l.first_name}</div>
-                                                <div className="text-sm opacity-50">{l.last_name}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>{l.email}</td>
-                                    <td>{moment(new Date()).add(-5*(k+2), 'days').format("DD MMM YY")}</td>
-                                    <td>{getDummyStatus(k)}</td>
-                                    <td>{l.last_name}</td>
-                                    <td><button className="btn btn-square btn-ghost" onClick={() => deleteCurrentLead(k)}><TrashIcon className="w-5"/></button></td>
-                                    </tr>
-                                )
-                            })
-                        }
-                    </tbody>
-                </table>
-            </div>
-            </TitleCard>
-        </>
-    )
-}
-
-
-export default Leads
+export default Leads;
