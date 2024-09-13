@@ -3,22 +3,56 @@ const { Pool } = require("pg");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { body, query, validationResult } = require('express-validator');
+const helmet = require('helmet');
+const rateLimit = require("express-rate-limit");
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(helmet());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
 
 const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "angeliteforecast",
-  password: "thesis",
-  port: 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT,
 });
 
-const SECRET_KEY = "thesis"
+const SECRET_KEY = process.env.JWT_SECRET;
 
-app.get("/api/transactions", async (req, res) => {
+// Middleware to validate request
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
+app.get("/api/transactions", 
+  [
+    query('department').optional().isString().trim().escape(),
+    query('search').optional().isString().trim().escape(),
+    query('startYear').optional().isInt(),
+    query('endYear').optional().isInt(),
+    query('firstYear').optional().isInt(),
+    query('secondYear').optional().isInt(),
+    query('thirdYear').optional().isInt(),
+    query('fourthYear').optional().isInt(),
+    query('fifthYear').optional().isInt(),
+  ],
+  validate,
+  async (req, res) => {
   try {
     // Extract query parameters
     const {
@@ -109,6 +143,7 @@ app.get("/api/transactions", async (req, res) => {
     console.log("With values:", values);
 
     // Execute the query with the conditions
+    
     const result = await pool.query(query, values);
     res.json(result.rows);
   } catch (err) {
@@ -119,7 +154,9 @@ app.get("/api/transactions", async (req, res) => {
 
 app.get("/api/departments", async (req, res) => {
   try {
-    const query = 'SELECT DISTINCT "Department" FROM processed_data ORDER BY "Department"';
+    const query = {
+      text: 'SELECT DISTINCT "Department" FROM processed_data ORDER BY "Department"'
+    };
     const result = await pool.query(query);
     res.json(result.rows);
   } catch (err) {
@@ -129,7 +166,10 @@ app.get("/api/departments", async (req, res) => {
 });
 
 // Endpoint to fetch majors based on department
-app.get("/api/majors", async (req, res) => {
+app.get("/api/majors", 
+  [query('department').isString().trim().escape()],
+  validate,
+  async (req, res) => {
   try {
     const { department } = req.query;
 
@@ -137,40 +177,40 @@ app.get("/api/majors", async (req, res) => {
       return res.status(400).json({ error: "Department is required" });
     }
 
-    const query = `
-      WITH latest_data AS (
+    const query = {
+      text: `
+        WITH latest_data AS (
+          SELECT 
+            "Major",
+            MAX("Start_Year") AS max_year
+          FROM enrollment
+          WHERE "Department" = $1
+          GROUP BY "Major"
+        ),
+        latest_semester AS (
+          SELECT 
+            e."Major",
+            e."Start_Year",
+            MAX(e."Semester") AS max_semester
+          FROM enrollment e
+          JOIN latest_data ld ON e."Major" = ld."Major" AND e."Start_Year" = ld.max_year
+          WHERE e."Department" = $1
+          GROUP BY e."Major", e."Start_Year"
+        )
         SELECT 
-          "Major",
-          MAX("Start_Year") AS max_year
-        FROM enrollment
-        WHERE "Department" = $1
-        GROUP BY "Major"
-      ),
-      latest_semester AS (
-        SELECT 
-          e."Major",
-          e."Start_Year",
-          MAX(e."Semester") AS max_semester
-        FROM enrollment e
-        JOIN latest_data ld ON e."Major" = ld."Major" AND e."Start_Year" = ld.max_year
-        WHERE e."Department" = $1
-        GROUP BY e."Major", e."Start_Year"
-      )
-      SELECT 
-        m.name AS major,
-        COALESCE(ld.max_year, m.latest_year) AS max_start_year,
-        COALESCE(ls.max_semester, 1) AS max_semester
-      FROM majors m
-      LEFT JOIN latest_data ld ON m.name = ld."Major"
-      LEFT JOIN latest_semester ls ON m.name = ls."Major"
-      WHERE m.department = $1
-      ORDER BY m.name
-    `;
+          m.name AS major,
+          COALESCE(ld.max_year, m.latest_year) AS max_start_year,
+          COALESCE(ls.max_semester, 1) AS max_semester
+        FROM majors m
+        LEFT JOIN latest_data ld ON m.name = ld."Major"
+        LEFT JOIN latest_semester ls ON m.name = ls."Major"
+        WHERE m.department = $1
+        ORDER BY m.name
+      `,
+      values: [department]
+    };
     
-    const values = [department];
-
-    const result = await pool.query(query, values);
-    console.log(result.rows);
+    const result = await pool.query(query);
     res.json(result.rows);
   } catch (err) {
     console.error("Error occurred:", err);
@@ -179,37 +219,48 @@ app.get("/api/majors", async (req, res) => {
 });
 
 // Registration endpoint
-app.post("/api/register", async (req, res) => {
-  console.log(req.body);
-  const { name, email, password, confirmPassword } = req.body;
+app.post("/api/register", 
+  [
+    body('name').isString().trim().escape(),
+    body('email').isEmail().normalizeEmail(),
+    body('password').isLength({ min: 6 }),
+    body('confirmPassword').custom((value, { req }) => {
+      if (value !== req.body.password) {
+        throw new Error('Password confirmation does not match password');
+      }
+      return true;
+    }),
+  ],
+  validate,
+  async (req, res) => {
+  const { name, email, password } = req.body;
   try {
-    // Check if password and confirmPassword match
-    if (password !== confirmPassword) {
-      console.log("Passwords do not match");
-      return res.status(400).json({ error: "Passwords do not match" });
-    }
-    console.log("zzzz")
-
     // Check if username already exists
-    const usernameCheck = await pool.query("SELECT * FROM users WHERE username = $1", [name]);
-    console.log("aaaa", usernameCheck.rows.length)
+    const usernameQuery = {
+      text: "SELECT * FROM users WHERE username = $1",
+      values: [name]
+    };
+    const usernameCheck = await pool.query(usernameQuery);
     if (usernameCheck.rows.length > 0) {
-      console.log("Username already exists");
       return res.status(400).json({ error: "Username already exists" });
     }
 
     // Check if email already exists
-    const emailCheck = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const emailQuery = {
+      text: "SELECT * FROM users WHERE email = $1",
+      values: [email]
+    };
+    const emailCheck = await pool.query(emailQuery);
     if (emailCheck.rows.length > 0) {
-      console.log("Email already exists");
       return res.status(400).json({ error: "Email already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
-      [name, email, hashedPassword]
-    );
+    const insertQuery = {
+      text: "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
+      values: [name, email, hashedPassword]
+    };
+    const result = await pool.query(insertQuery);
     res.status(201).json({ userId: result.rows[0].id });
   } catch (err) {
     console.error("Error occurred:", err);
@@ -218,10 +269,20 @@ app.post("/api/register", async (req, res) => {
 });
 
 // Login endpoint
-app.post("/api/login", async (req, res) => {
+app.post("/api/login", 
+  [
+    body('email').isEmail().normalizeEmail(),
+    body('password').isLength({ min: 6 }),
+  ],
+  validate,
+  async (req, res) => {
   const { email, password } = req.body;
   try {
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const emailQuery = {
+      text: "SELECT * FROM users WHERE email = $1",
+      values: [email]
+    };
+    const result = await pool.query(emailQuery);
     if (result.rows.length === 0) {
       return res.status(400).json({ error: "Invalid credentials" });
     }
@@ -240,6 +301,39 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-app.listen(5000, () => {
-  console.log("Server is running on port 5000");
+// New route to get the latest data year
+app.get('/api/latest-data-year', async (req, res) => {
+  try {
+    const latestYearQuery = {
+      text: `
+        SELECT MAX(GREATEST(
+          enrollment."Start_Year",
+          COALESCE(cpi_education."Year", 0),
+          COALESCE(hfce."Start_Year", 0),
+          COALESCE(admission."Start_Year", 0),
+          COALESCE(inflation_rate."Start_Year", 0)
+        )) as latest_year
+        FROM enrollment
+        LEFT JOIN cpi_education ON enrollment."Start_Year" = cpi_education."Year"
+        LEFT JOIN hfce ON enrollment."Start_Year" = hfce."Start_Year"
+        LEFT JOIN admission ON enrollment."Start_Year" = admission."Start_Year"
+        LEFT JOIN inflation_rate ON enrollment."Start_Year" = inflation_rate."Start_Year"
+      `
+    };
+    
+    const result = await pool.query(latestYearQuery);
+    
+    if (result.rows.length > 0) {
+      res.json({ latestYear: result.rows[0].latest_year });
+    } else {
+      res.status(404).json({ error: 'No data found' });
+    }
+  } catch (err) {
+    console.error('Error occurred:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.listen(process.env.PORT || 5000, () => {
+  console.log(`Server is running on port ${process.env.PORT || 5000}`);
 });

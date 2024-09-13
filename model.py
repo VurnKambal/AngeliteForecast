@@ -5,8 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import xgboost as xgb
-
+import os
 import joblib
+import hashlib
+
+from hash import compute_file_hash
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
@@ -189,36 +192,36 @@ def determine_start_month(semester):
         return 11  # November
     
 
-# def query_data():
-#     # Query data from the database
-#     pass
-#     df = pd.read_csv("data/Enrollment_Data.csv")            # Change to database query
-#     cpi_df = pd.read_csv("data/CPI_Education.csv")          # Change to database query
-#     inflation_df = pd.read_csv("data/Inflation_Rate.csv")   # Change to database query
-#     admission_df = pd.read_csv("data/Admission_Data.csv")   # Change to database query
-#     hfce_df = pd.read_csv("data/HFCE.csv")                  # Change to database query
 
-
-
-
+def safe_load_model(file_path, expected_hash):
+    """Safely load a joblib-serialized model after verifying its hash."""
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Model file not found: {file_path}")
+    
+    actual_hash = compute_file_hash(file_path)
+    if actual_hash != expected_hash:
+        raise ValueError(f"Model file hash mismatch for {file_path}. File may have been tampered with.")
+    
+    return joblib.load(file_path)
 
 def initialize_models():
-    # Load the models
-    rf_model = joblib.load("models/rf_model.pkl")
-    xgb_model = joblib.load("models/xgb_model.pkl")
-    ensembled_models = joblib.load("models/ensembled_models.pkl")
-    lr_models = joblib.load("models/lr_models.pkl")
-    knn_model = joblib.load("models/knn_model.pkl")
-    svr_model = joblib.load("models/svr_model.pkl")
-    models = {
-        "rf": rf_model,
-        "xgb": xgb_model,
-        "ensembled": ensembled_models,
-        "lr": lr_models,
-        "knn": knn_model,
-        "svr": svr_model
-    }
-    # models = joblib.load("models/ensembled_models.pkl")
+    # Load expected hashes from JSON file
+    try:
+        with open(os.path.join("models", 'model_hashes.json'), 'r') as f:
+            expected_hashes = json.load(f)
+            
+    except FileNotFoundError:
+        raise FileNotFoundError("model_hashes.json not found. Please run the hash update script.")
+
+    models = {}
+    print("expected_hashes", expected_hashes, "\n\n\n\n\n")
+    for model_name, expected_hash in expected_hashes.items():
+        file_path = os.path.join("models", model_name)
+        try:
+            models[model_name.split('.')[0]] = safe_load_model(file_path, expected_hash)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"Error loading {model_name}: {str(e)}")
+            # Handle the error appropriately
 
     return models
 
@@ -358,11 +361,11 @@ def clean_data(df):
 def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, train=False):
     
     print(enrollment_df.columns)
-    dept_encoder = joblib.load('data/dept_encoder.pkl')
-    major_encoder = joblib.load('data/major_encoder.pkl')
-    dept_pca = joblib.load('data/dept_pca.pkl')
-    major_pca = joblib.load('data/major_pca.pkl')
-    columns = joblib.load("data/columns.pkl")
+    dept_encoder = joblib.load(os.path.join('data', 'dept_encoder.pkl'))
+    major_encoder = joblib.load(os.path.join('data', 'major_encoder.pkl'))
+    dept_pca = joblib.load(os.path.join('data', 'dept_pca.pkl'))
+    major_pca = joblib.load(os.path.join('data', 'major_pca.pkl'))
+    columns = joblib.load(os.path.join("data", "columns.pkl"))
     print("enrollment_df", enrollment_df[enrollment_df["Major"] == "SHS"])
     enrollment_df = clean_data(enrollment_df)
     
@@ -505,6 +508,7 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
 
 
     print("X_pred", X_pred.columns)
+    print(X_pred)
     # Reorder the columns of X_pred to match the order in columns.pkl
     X_pred = X_pred.reindex(columns=columns, fill_value=0)
 
@@ -545,7 +549,7 @@ def train_models(engine, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, en
     df = pd.DataFrame(data)
     
     # Tuned parameters during past training
-    params = json.load(open("data/tuned_params.json"))
+    params = json.load(open(os.path.join("data", "tuned_params.json")))
     rf_params = params["rf"]
     xgb_params = params["xgb"]
 
@@ -578,14 +582,14 @@ def train_models(engine, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, en
         if len(y_major_train) > 1:
             # Train SES model
             ses_model = SimpleExpSmoothing(y_major_train).fit(smoothing_level=0.8, optimized=False)
-            models["ses"][major] = ses_model
+            models["ses_models"][major] = ses_model
         else:
             print(f"Skipping SES model for {major} because it has less than 2 data points.")
     
     return models
 
 # Function to make predictions
-def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1):
+def make_predictions(engine, selectedModel, models, data, start_year, semester, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1):
     """
     engine: SQLAlchemy engine objectl
     selectedModel: selected model for prediction
@@ -596,9 +600,14 @@ def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight
     weight_xgb: weight for the XGBoost model
     engine: SQLAlchemy engine object
     """
-    major = data['Major'][0]
-    pred_year = data['Start_Year'].iloc[-1]
-    pred_semester = data['Semester'].iloc[-1]
+    data_pred = data.query(f"Start_Year == {start_year} and Semester == {semester}")
+    if len(data_pred) == 0:
+        return "No data found"
+    
+    print("data_pred", data_pred)
+    major = data['Major'].iloc[0]
+    pred_year = data_pred['Start_Year'].iloc[0]
+    pred_semester = data_pred['Semester'].iloc[0]
     major_data = data[data['Major'] == major]
     predictions = {}
     X_major = major_data.drop(columns=['Major']).reset_index(drop=True)
@@ -611,7 +620,7 @@ def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight
     print(X_major_train, "\n\n\n", X_major_pred)
     match(selectedModel.lower()):
         case "random_forest":
-            rf_model = models["rf"]
+            rf_model = models["rf_model"]
             y_major_train_pred = rf_model.predict(X_major_train)
             y_major_pred = rf_model.predict(X_major_pred)
             predictions = {
@@ -621,7 +630,7 @@ def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight
             print("predictions", predictions)
         
         case "xgboost":     
-            xgb_model = models["xgb"]
+            xgb_model = models["xgb_model"]
 
             dtrain = xgb.DMatrix(X_major_train)
             dpred = xgb.DMatrix(X_major_pred)
@@ -639,12 +648,12 @@ def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight
             print("predictions", predictions)
 
         case "linear_regression":
-            if "lr" not in models:
+            if "lr_models" not in models:
                 lr_model = LinearRegression()
                 lr_model.fit(X_major_train, y_major_train)
                 models["lr"] = lr_model
             else:
-                lr_model = models["lr"].get(major)
+                lr_model = models["lr_models"].get(major)
                 print(lr_model)
 
             y_major_train_pred = lr_model.predict(X_major_train)
@@ -655,12 +664,12 @@ def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight
             }
 
         case "knn":
-            if "knn" not in models:
+            if "knn_model" not in models:
                 knn_model = KNeighborsRegressor(n_neighbors=5)  # You can adjust n_neighbors
-                knn_model.fit(X_major_train, X_major_train['TOTAL'])
+                knn_model.fit(X_major_train, y_major_train)
                 models["knn"] = knn_model
             else:
-                knn_model = models["knn"]
+                knn_model = models["knn_model"]
             y_major_train_pred = knn_model.predict(X_major_train)
             y_major_pred = knn_model.predict(X_major_pred)
             predictions = {
@@ -669,12 +678,12 @@ def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight
             }
 
         case "svr":
-            if "svr" not in models:
+            if "svr_model" not in models:
                 svr_model = SVR(kernel='rbf')  # You can adjust the kernel
-                svr_model.fit(X_major_train, X_major_train['TOTAL'])
+                svr_model.fit(X_major_train, y_major_train)
                 models["svr"] = svr_model
             else:
-                svr_model = models["svr"]
+                svr_model = models["svr_model"]
             y_major_train_pred = svr_model.predict(X_major_train)
             y_major_pred = svr_model.predict(X_major_pred)
             predictions = {
@@ -689,9 +698,9 @@ def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight
             weight_rf /= total_weight
             weight_xgb /= total_weight
 
-            rf_model = models["rf"]
-            xgb_model = models["xgb"]
-            ensembled_models = models["ensembled"].get(major)
+            rf_model = models["rf_model"]
+            xgb_model = models["xgb_model"]
+            ensembled_models = models["ensembled_models"].get(major)
             print("ensembled_models", models)
             print("\n\n\ndata     ", data)
             major = data['Major'][0]
@@ -747,5 +756,5 @@ def make_predictions(engine, selectedModel, models, data, weight_ses=0.2, weight
     predictions_df.to_csv('prediction_results.csv', index=False)
 
     # Return the last prediction from predictions_df
-    return predictions_df.iloc[-1]["Prediction"]
+    return predictions_df["Prediction"].iloc[-1]
     

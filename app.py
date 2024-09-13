@@ -11,8 +11,7 @@ import joblib
 
 from sqlalchemy import create_engine
 
-from model import initialize_models, preprocess_data
-from model import make_predictions, train_models
+from model import initialize_models, preprocess_data, make_predictions, train_models
 
 app = Flask(__name__)
 CORS(app)
@@ -122,10 +121,14 @@ def predict():
     print("awewarwarwarwa", processed_data)
     df = pd.DataFrame(processed_data)
     selectedModel = data['model']
+    start_year = data['start_year']
+    semester = data['semester']
     
-    prediction = make_predictions(ENGINE, selectedModel, models, df)
+    prediction = make_predictions(ENGINE, selectedModel, models, df, start_year, semester)
     print("prediction", prediction)
-    return jsonify(float(prediction)), 200
+    if type(prediction) == str:
+        return jsonify({"status": "error", "message": prediction}), 400
+    return jsonify({"status": "success", "prediction": float(prediction)}), 200
 
 # New route to process data from React app
 @app.route('/api/process-data', methods=['POST'])
@@ -143,7 +146,6 @@ def process_data(train=False):
         query_data(ENGINE)  # Assuming ENGINE is your database connection
     
     print("engine", ENGINE)
-    print(inflation_df)
     if train:
         # Process the data here using the global DataFrames
         processed_data = preprocess_data(None, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
@@ -151,6 +153,7 @@ def process_data(train=False):
         models = train_models(processed_data)
 
     else:
+        print("models", models)
         if len(models) == 0:
             models = initialize_models()
 
