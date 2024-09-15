@@ -265,6 +265,61 @@ app.post("/api/register",
   } catch (err) {
     console.error("Error occurred:", err);
     res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+app.get("/api/leads", async (req, res) => {
+  const { department, search } = req.query;
+
+  try {
+    // Base query for admission table
+      let query = `
+        SELECT DISTINCT
+          a."Start_Year" AS "Start_Year",
+          a."Department" AS "Department",
+          COALESCE(a."Number_of_Applicants", 0) AS "Number_of_Applicants",
+          COALESCE(a."Number_of_Enrolled_Applicants", 0) AS "Number_of_Enrolled_Applicants",
+          COALESCE(a."Number_of_Processed_Applicants", 0) AS "Number_of_Processed_Applicants",
+          COALESCE(c."CPI_Region3", 0) AS "CPI_Region3",
+          COALESCE(hfce."HFCE", 0) AS "HFCE_Education",
+          COALESCE(i."Inflation_Rate", 0) AS "Inflation_Rate"
+        FROM admission a
+      LEFT JOIN cpi_education c ON a."Start_Year" = c."Year"
+      LEFT JOIN hfce hfce ON a."Start_Year" = hfce."Start_Year"
+      LEFT JOIN inflation_rate i ON a."Start_Year" = i."Start_Year"
+      WHERE 1=1
+    `;
+
+    // Apply department filter if provided
+    if (department) {
+      query += ` AND a."Department" = $1`;
+    }
+
+    // Apply search filter if provided
+    if (search) {
+      query += ` AND (
+        a."Department" ILIKE $2
+      )`;
+    }
+
+    // Sort results in descending order by Start_Year
+    query += ` ORDER BY a."Start_Year" DESC`;
+
+    // Log the final query for debugging
+    console.log(`Constructed Query: ${query}`);
+
+    // Define parameter values based on provided filters
+    const values = [];
+    if (department) values.push(department);
+    if (search) values.push(`%${search}%`);
+
+    // Execute query
+    const result = await pool.query(query, values);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error executing query", err.stack);
+    res.status(500).send("Server error");
   }
 });
 
@@ -293,13 +348,16 @@ app.post("/api/login",
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: "1h" });
+      const token = jwt.sign({ userId: user.id }, SECRET_KEY, {
+        expiresIn: "1h",
+      });
     res.json({ token });
   } catch (err) {
     console.error("Error occurred:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
-});
+  }
+);
 
 // New route to get the latest data year
 app.get('/api/latest-data-year', async (req, res) => {
