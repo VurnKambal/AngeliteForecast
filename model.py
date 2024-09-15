@@ -358,7 +358,7 @@ def clean_data(df):
     return df
 
 
-def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, train=False):
+def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, external_data=None):
     
     print(enrollment_df.columns)
     dept_encoder = joblib.load(os.path.join('data', 'dept_encoder.pkl'))
@@ -396,8 +396,13 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
 
     X_pred["Start_Month"] = X_pred["Semester"].apply(determine_start_month)
     
+    
+    
+
     # Process admission data
     admission_df_copy = admission_df.copy()
+    if external_data["Number_of_Applicants"]:
+        admission_df_copy.loc[admission_df_copy["Start_Year"] == user_input["Start_Year"], "Number_of_Applicants"] = external_data["Number_of_Applicants"]
     admission_df_copy = admission_df_copy.drop(columns=["Number_of_Processed_Applicants", "Number_of_Enrolled_Applicants"])
     admission_df_copy["Department"] = admission_df_copy["Department"].replace("CICT", "SOC")
     
@@ -412,6 +417,8 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
 
     # Process CPI data
     cpi_df_copy = cpi_df.copy()
+    if external_data["CPI_Region3"]:
+        cpi_df_copy.loc[cpi_df_copy["Start_Year"] == user_input["Start_Year"], "CPI_Region3"] = external_data["CPI_Region3"]
     cpi_df_copy["Month"] = cpi_df_copy["Month"].map({
         "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
         "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12,
@@ -423,17 +430,24 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     # Process inflation data
     inflation_df_copy = inflation_df[["Start_Year", "Inflation_Rate"]].copy()
     inflation_df_copy = inflation_df_copy.dropna()
-    inflation_2024 = inflation_df_copy[inflation_df_copy["Start_Year"] == 2023].copy()
-    inflation_2024["Start_Year"] = 2024
-    inflation_2024["Inflation_Rate"] = float('nan')
-    inflation_df_copy = pd.concat([inflation_df_copy, inflation_2024], ignore_index=True)
+    inflation_latest = inflation_df_copy[inflation_df_copy["Start_Year"] == user_input["Start_Year"] - 1].copy()
+    inflation_latest["Start_Year"] = user_input["Start_Year"]
+    if external_data["Inflation_Rate"]:
+        inflation_latest["Inflation_Rate"] = external_data["Inflation_Rate"]
+    else:
+        inflation_latest["Inflation_Rate"] = float('nan')
+    inflation_df_copy = pd.concat([inflation_df_copy, inflation_latest], ignore_index=True)
     inflation_df_copy = inflation_df_copy.sort_values(by=['Start_Year']).reset_index(drop=True)
-    inflation_df_copy = inflation_df_copy[inflation_df_copy["Start_Year"] <= 2024]
+    inflation_df_copy = inflation_df_copy[inflation_df_copy["Start_Year"] <= user_input["Start_Year"]]
     inflation_df_copy = create_rolling_std(inflation_df_copy, group=None, target="Inflation_Rate", window_size=5, lag_steps=1)
     inflation_df_copy = inflation_df_copy.drop(columns=["Inflation_Rate"])
 
     # Process HFCE data
-    hfce_df_copy = hfce_df.dropna()
+    if external_data["HFCE_Education"]:
+        hfce_df_copy.loc[hfce_df_copy["Start_Year"] == user_input["Start_Year"], "HFCE_Education"] = external_data["HFCE_Education"]
+    if external_data["HFCE"]:
+        hfce_df_copy.loc[hfce_df_copy["Start_Year"] == user_input["Start_Year"], "HFCE"] = external_data["HFCE"]
+    hfce_df_copy = hfce_df_copy.dropna()
     hfce_df_copy = create_lag_features(hfce_df_copy, group=None, target="HFCE_Education", lag_steps=2)
     hfce_df_copy = create_rolling_std(hfce_df_copy, group=None, target="HFCE_Education", window_size=3)
     hfce_df_copy = create_lag_features(hfce_df_copy, group=None, target="HFCE", lag_steps=2)
@@ -521,6 +535,18 @@ def preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_d
     print(X_pred.info())
     # Ensure all columns in X_pred are in the correct order
     X_pred = X_pred[columns].fillna(0)
+
+    # Merge with external data
+    if external_data:
+        for column, value in external_data.items():
+            if column in X_pred.columns:
+                X_pred.loc[X_pred["Start_Year"] == user_input["Start_Year"], column] = value
+            else:
+                X_pred[column] = np.nan
+                X_pred.loc[X_pred["Start_Year"] == user_input["Start_Year"], column] = value
+
+
+    print("X_predssss", X_pred)
     return X_pred
 
 # Helper functions (create_rolling_std, create_lag_features) should be defined here

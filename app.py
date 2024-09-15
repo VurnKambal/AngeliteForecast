@@ -9,12 +9,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import joblib
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from model import initialize_models, preprocess_data, make_predictions, train_models
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize models
+models = initialize_models()
+
 @app.route('/test', methods=['GET'])
 def test():
     return jsonify({"message": "Test successful"}), 200
@@ -143,9 +147,7 @@ def process_data(train=False):
 
     # Ensure the data has been queried
     if enrollment_df is None:
-        query_data(ENGINE)  # Assuming ENGINE is your database connection
-    
-    print("engine", ENGINE)
+        query_data(ENGINE)
     if train:
         # Process the data here using the global DataFrames
         processed_data = preprocess_data(None, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
@@ -156,19 +158,28 @@ def process_data(train=False):
         print("models", models)
         if len(models) == 0:
             models = initialize_models()
+    # Process external data
+    use_external_data = data.get('UseExternalData', False)
+    external_data = {}
+    if use_external_data:
+        external_data = {
+            'Number_of_Applicants': data.get('AdmissionRate'),
+            'CPI_Region3': data.get('CPIEducation'),
+            'HFCE': data.get('OverallHFCE'),
+            'HFCE_Education': data.get('HFCEEducation'),
+            'Inflation_Rate': data.get('InflationRate')
+        }
+        # Remove None values (where user didn't provide input)
+        external_data = {k: v for k, v in external_data.items() if v is not None}
 
-    
-    # processed_data = preprocess_data(combined_data, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
-    processed_data = preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
-         
-       
+    # Process the data here using the global DataFrames and user input
+    processed_data = preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, external_data)
+
     response = {
         'status': 'success',
         'message': 'Data processed successfully',
-        'processed_data': json.dumps(processed_data.to_dict(orient='records'), cls=NpEncoder)
-    }   
-    print("Processed data response:", response)
-    print(processed_data)
+        'processed_data': processed_data.to_json(orient='records')
+    }
     return jsonify(response), 200
 
 

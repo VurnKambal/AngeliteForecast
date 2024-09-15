@@ -306,18 +306,8 @@ app.get('/api/latest-data-year', async (req, res) => {
   try {
     const latestYearQuery = {
       text: `
-        SELECT MAX(GREATEST(
-          enrollment."Start_Year",
-          COALESCE(cpi_education."Year", 0),
-          COALESCE(hfce."Start_Year", 0),
-          COALESCE(admission."Start_Year", 0),
-          COALESCE(inflation_rate."Start_Year", 0)
-        )) as latest_year
-        FROM enrollment
-        LEFT JOIN cpi_education ON enrollment."Start_Year" = cpi_education."Year"
-        LEFT JOIN hfce ON enrollment."Start_Year" = hfce."Start_Year"
-        LEFT JOIN admission ON enrollment."Start_Year" = admission."Start_Year"
-        LEFT JOIN inflation_rate ON enrollment."Start_Year" = inflation_rate."Start_Year"
+        SELECT MAX("Start_Year") as latest_year
+        FROM processed_data
       `
     };
     
@@ -333,6 +323,136 @@ app.get('/api/latest-data-year', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+// Endpoint to fetch external data based on school year and department
+app.get("/api/external-data", 
+  [
+    query('schoolYear').isInt(),
+    query('department').isString().trim().escape()
+  ],
+  validate,
+  async (req, res) => {
+    const { schoolYear, department } = req.query;
+
+    try {
+      const year = parseInt(schoolYear);
+
+      const query = {
+        text: `
+          SELECT 
+            "CPI_Region3" as "CPIEducation",
+            "Inflation_Rate_lag_1" as "InflationRatePast",
+            "Number_of_Applicants" as "AdmissionRate",
+            "HFCE" as "OverallHFCE",
+            "HFCE_Education" as "HFCEEducation"
+          FROM processed_data
+          WHERE "Start_Year" = $1 AND "Department" = $2
+          LIMIT 1
+        `,
+        values: [year, department]
+      };
+
+      const result = await pool.query(query);
+
+      if (result.rows.length > 0) {
+        const externalData = {
+          CPIEducation: parseFloat(result.rows[0].CPIEducation) || null,
+          InflationRatePast: parseFloat(result.rows[0].InflationRatePast) || null,
+          AdmissionRate: parseFloat(result.rows[0].AdmissionRate) || null,
+          OverallHFCE: parseFloat(result.rows[0].OverallHFCE) || null,
+          HFCEEducation: parseFloat(result.rows[0].HFCEEducation) || null
+        };
+        res.json(externalData);
+      } else {
+        res.status(404).json({ message: "No data found for the given school year and department" });
+      }
+    } catch (err) {
+      console.error("Error fetching external data:", err);
+      res.status(500).json({ error: "An error occurred while fetching external data" });
+    }
+  }
+);
+
+// Endpoint to process data for prediction
+app.post("/api/process-data", 
+  [
+    body('Start_Year').isInt(),
+    body('Semester').isInt(),
+    body('Department').isString().trim().escape(),
+    body('Major').isString().trim().escape(),
+    body('Year_Level').isInt(),
+    body('UseExternalData').isBoolean(),
+    body('AdmissionRate').optional().isFloat(),
+    body('CPIEducation').optional().isFloat(),
+    body('OverallHFCE').optional().isFloat(),
+    body('HFCEEducation').optional().isFloat(),
+    body('InflationRatePast').optional().isFloat(),
+  ],
+  validate,
+  async (req, res) => {
+    try {
+      const { 
+        Start_Year, 
+        Semester, 
+        Department, 
+        Major, 
+        Year_Level, 
+        UseExternalData,
+        AdmissionRate,
+        CPIEducation,
+        OverallHFCE,
+        HFCEEducation,
+        InflationRatePast
+      } = req.body;
+
+      let query = {
+        text: `
+          SELECT 
+            pd.*,
+            CASE WHEN $6 THEN
+              COALESCE($7, pd."Number_of_Applicants") AS "Admission_Rate",
+              COALESCE($8, pd."CPI_Region3") AS "CPI_Education",
+              COALESCE($9, pd."HFCE") AS "Overall_HFCE",
+              COALESCE($10, pd."HFCE_Education") AS "HFCE_Education",
+              COALESCE($11, pd."Inflation_Rate_lag_1") AS "Inflation_Rate_Past"
+            ELSE
+              pd."Number_of_Applicants" as "Admission_Rate",
+              pd."CPI_Region3" as "CPI_Education",
+              pd."HFCE" as "Overall_HFCE",
+              pd."HFCE_Education" as "HFCE_Education",
+              pd."Inflation_Rate_lag_1" as "Inflation_Rate_Past"
+            END
+          FROM processed_data pd
+          WHERE pd."Start_Year" = $1 AND pd."Semester" = $2 AND pd."Department" = $3 AND pd."Major" = $4
+        `,
+        values: [
+          Start_Year, 
+          Semester, 
+          Department, 
+          Major, 
+          Year_Level, 
+          UseExternalData,
+          AdmissionRate || null,
+          CPIEducation || null,
+          OverallHFCE || null,
+          HFCEEducation || null,
+          InflationRatePast || null
+        ]
+      };
+
+      const result = await pool.query(query);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "No data found for the given parameters" });
+      }
+
+      res.json({ status: "success", processed_data: JSON.stringify(result.rows) });
+    } catch (err) {
+      console.error("Error processing data:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
 
 app.listen(process.env.PORT || 5000, () => {
   console.log(`Server is running on port ${process.env.PORT || 5000}`);
