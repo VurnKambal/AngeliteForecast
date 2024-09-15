@@ -149,7 +149,6 @@ function Leads() {
                 <th>Department</th>
                 <th>Number of Applicants</th>
                 <th>Number Enrolled</th>
-                <th>Processed Applicants</th>
                 <th>CPI Region 3</th>
                 <th>HFCE Education</th>
                 <th>Inflation Rate</th>
@@ -162,7 +161,6 @@ function Leads() {
                   <td>{l.Department}</td>
                   <td>{l.Number_of_Applicants}</td>
                   <td>{l.Number_of_Enrolled_Applicants}</td>
-                  <td>{l.Number_of_Processed_Applicants}</td>
                   <td>{l.CPI_Region3}</td>
                   <td>{l.HFCE_Education}</td>
                   <td>{l.Inflation_Rate}</td>

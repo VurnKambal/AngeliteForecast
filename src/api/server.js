@@ -269,59 +269,68 @@ app.post("/api/register",
   }
 );
 
-app.get("/api/leads", async (req, res) => {
-  const { department, search } = req.query;
+app.get("/api/leads", 
+  [
+    query('department').optional().isString().trim().escape(),
+    query('search').optional().isString().trim().escape()
+  ],
+  validate,
+  async (req, res) => {
+    const { department, search } = req.query;
 
-  try {
-    // Base query for admission table
+    try {
       let query = `
+        WITH admission_data AS (
+          SELECT
+            a."Start_Year",
+            a."Department",
+            COALESCE(a."Number_of_Applicants", 0) AS "Number_of_Applicants",
+            COALESCE(a."Number_of_Enrolled_Applicants", 0) AS "Number_of_Enrolled_Applicants"
+          FROM admission a
+          WHERE 1=1
+          ${department ? 'AND a."Department" = $1' : ''}
+          ${search ? 'AND a."Department" ILIKE $2' : ''}
+        ),
+        external_data AS (
+          SELECT
+            c."Year" AS "Start_Year",
+            ROUND(AVG(c."CPI_Region3")::numeric, 2) AS "CPI_Region3",
+            ROUND(AVG(hfce."HFCE")::numeric, 2) AS "HFCE",
+            ROUND(AVG(hfce."HFCE_Education")::numeric, 2) AS "HFCE_Education",
+            ROUND(AVG(i."Inflation_Rate")::numeric, 2) AS "Inflation_Rate"
+          FROM cpi_education c
+          LEFT JOIN hfce ON c."Year" = hfce."Start_Year"
+          LEFT JOIN inflation_rate i ON c."Year" = i."Start_Year"
+          GROUP BY c."Year"
+        )
         SELECT DISTINCT
-          a."Start_Year" AS "Start_Year",
-          a."Department" AS "Department",
-          COALESCE(a."Number_of_Applicants", 0) AS "Number_of_Applicants",
-          COALESCE(a."Number_of_Enrolled_Applicants", 0) AS "Number_of_Enrolled_Applicants",
-          COALESCE(a."Number_of_Processed_Applicants", 0) AS "Number_of_Processed_Applicants",
-          COALESCE(c."CPI_Region3", 0) AS "CPI_Region3",
-          COALESCE(hfce."HFCE", 0) AS "HFCE_Education",
-          COALESCE(i."Inflation_Rate", 0) AS "Inflation_Rate"
-        FROM admission a
-      LEFT JOIN cpi_education c ON a."Start_Year" = c."Year"
-      LEFT JOIN hfce hfce ON a."Start_Year" = hfce."Start_Year"
-      LEFT JOIN inflation_rate i ON a."Start_Year" = i."Start_Year"
-      WHERE 1=1
-    `;
+          ad."Start_Year",
+          ad."Department",
+          ad."Number_of_Applicants",
+          ad."Number_of_Enrolled_Applicants",
+          COALESCE(ed."CPI_Region3", 0) AS "CPI_Region3",
+          COALESCE(ed."HFCE", 0) AS "HFCE",
+          COALESCE(ed."HFCE_Education", 0) AS "HFCE_Education",
+          COALESCE(ed."Inflation_Rate", 0) AS "Inflation_Rate"
+        FROM admission_data ad
+        LEFT JOIN external_data ed ON ad."Start_Year" = ed."Start_Year"
+        ORDER BY ad."Start_Year" ASC, ad."Department" ASC
+      `;
 
-    // Apply department filter if provided
-    if (department) {
-      query += ` AND a."Department" = $1`;
+      console.log(`Constructed Query: ${query}`);
+
+      const values = [];
+      if (department) values.push(department);
+      if (search) values.push(`%${search}%`);
+
+      const result = await pool.query(query, values);
+      res.json(result.rows);
+    } catch (err) {
+      console.error("Error executing query", err.stack);
+      res.status(500).send("Server error");
     }
-
-    // Apply search filter if provided
-    if (search) {
-      query += ` AND (
-        a."Department" ILIKE $2
-      )`;
-    }
-
-    // Sort results in descending order by Start_Year
-    query += ` ORDER BY a."Start_Year" DESC`;
-
-    // Log the final query for debugging
-    console.log(`Constructed Query: ${query}`);
-
-    // Define parameter values based on provided filters
-    const values = [];
-    if (department) values.push(department);
-    if (search) values.push(`%${search}%`);
-
-    // Execute query
-    const result = await pool.query(query, values);
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error executing query", err.stack);
-    res.status(500).send("Server error");
   }
-});
+);
 
 // Login endpoint
 app.post("/api/login", 

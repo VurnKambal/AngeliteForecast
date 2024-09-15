@@ -26,6 +26,7 @@ function InternalPage() {
     });
 
     const [selectedModel, setSelectedModel] = useState('');
+    const [movingAverageRange, setMovingAverageRange] = useState(2);
     const [departments, setDepartments] = useState([]);
     const [majors, setMajors] = useState([]);
     const [latestDataYear, setLatestDataYear] = useState(null);
@@ -121,6 +122,10 @@ function InternalPage() {
         setSelectedModel(e.target.value);
     };
 
+    const handleMovingAverageRangeChange = (e) => {
+        setMovingAverageRange(parseInt(e.target.value));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -148,7 +153,8 @@ function InternalPage() {
                 cpi_education: formData.CPIEducation,
                 overall_hfce: formData.OverallHFCE,
                 hfce_education: formData.HFCEEducation,
-                inflation_rate_past: formData.InflationRatePast
+                inflation_rate_past: formData.InflationRatePast,
+                moving_average_range: selectedModel === 'Moving_Average' ? movingAverageRange : null
             };
 
             try {
@@ -340,9 +346,30 @@ function InternalPage() {
                                         <option value="KNN">KNN</option>
                                         <option value="SVR">SVR</option>
                                     </optgroup>
+                                    <optgroup label="Time Series Models">
+                                        <option value="Moving_Average">Moving Average</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
+
+                        {/* Moving Average Range Selection */}
+                        {selectedModel === 'Moving_Average' && (
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text required">Number of Semesters for Moving Average</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    value={movingAverageRange}
+                                    onChange={handleMovingAverageRangeChange}
+                                    className="input input-bordered w-full"
+                                    min="2"
+                                    max="10"
+                                    required
+                                />
+                            </div>
+                        )}
 
                         {/* External Data Checkbox */}
                         <div className="form-control">
