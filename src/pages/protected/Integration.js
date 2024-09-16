@@ -351,10 +351,9 @@ function InternalPage() {
                                     <optgroup label="Classical Models">
                                         <option value="Linear_Regression">Linear Regression</option>
                                         <option value="KNN">KNN</option>
-                                        <option value="SVR">SVR</option>
                                     </optgroup>
                                     <optgroup label="Time Series Models">
-                                        <option value="Moving_Average">Moving Average</option>
+                                        <option value="Moving_Average" disabled>Moving Average</option>
                                         <option value="Simple_Exponential_Smoothing">Simple Exponential Smoothing</option>
                                     </optgroup>
                                 </select>

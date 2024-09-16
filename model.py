@@ -344,6 +344,7 @@ def clean_data(df):
     return df
 
 
+
 def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, train=False):
     dept_encoder = joblib.load('data/dept_encoder.pkl')
     major_encoder = joblib.load('data/major_encoder.pkl')
@@ -359,22 +360,16 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
 
     # Create a DataFrame from user input
     if user_input is not None:
-
         # Filter out rows from enrollment_df that match the Start_Year and Semester of the user input
         enrollment_df = enrollment_df.query(f"Start_Year < {start_year} or (Start_Year == {start_year} and Semester <= {semester})")
 
     else:
         columns.insert(3, "1st_Year")
 
-    
+   
 
     # Create prediction DataFrame
     X_pred = enrollment_df[["Major", "Department", "Start_Year", "Semester"]].copy()
-    # X_pred = pd.DataFrame()
-    # X_pred["Major"] = df["Major"]
-    # X_pred["Department"] = df["Department"]
-    # X_pred["Start_Year"] = df["Start_Year"]
-    # X_pred["Semester"] = df["Semester"]
 
     X_pred["Start_Month"] = X_pred["Semester"].apply(determine_start_month)
     
@@ -385,7 +380,7 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     admission_df = create_lag_features(admission_df, group=["Department"], target="Number_of_Applicants", lag_steps=1)
     admission_df = create_rolling_std(admission_df, group=["Department"], target="Number_of_Applicants", window_size=3, min_periods=1, lag_steps=0)
     admission_df = admission_df.fillna(0)
-    admission_df.to_csv("a.csv")
+
     # Process CPI data
     cpi_df_copy = cpi_df.copy()
     cpi_df_copy = cpi_df_copy[cpi_df_copy["Month"] != "Ave"]  # Exclude "Ave" rows
@@ -394,8 +389,6 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     cpi_df_copy[["Year"]] = cpi_df_copy[["Year"]].astype(int)
     cpi_df_copy = cpi_df_copy.groupby("Year")["CPI_Region3"].mean().reset_index()
     cpi_df_copy = create_rolling_std(cpi_df_copy, group=None, target="CPI_Region3", window_size=6, lag_steps=1)
-    print(cpi_df)
-    print(cpi_df_copy)
 
     # Process inflation data
     inflation_df_copy = inflation_df[["Start_Year", "Inflation_Rate"]].copy()
@@ -427,11 +420,6 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     X_pred = X_pred.merge(inflation_df_copy, on=["Start_Year"], how="left")
     X_pred = X_pred.merge(admission_df, on=["Department", "Start_Year"], how="left")
     X_pred = X_pred.merge(hfce_df, on=["Start_Year"], how="left")
-    print("After merging with cpi_df_copy:", X_pred[['Start_Year', 'CPI_Region3_rolling_std_lag_1']])
-    print("After merging with inflation_df_copy:", X_pred[['Start_Year', 'Inflation_Rate_rolling_std_lag_1']])
-    print("After merging with admission_df:", X_pred[['Start_Year', 'Number_of_Applicants_rolling_std']])
-    print("After merging with hfce_df_copy:", X_pred[['Start_Year', 'HFCE_Education_rolling_std']])
-    # Drop unnecessary columns
 
     enrollment_df = create_lag_features(enrollment_df, lag_steps=1, target="TOTAL")
     
@@ -446,9 +434,6 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     # Step 2: Calculate the total number of students for each year
     total_students_per_year = grouped.groupby(['Start_Year', 'Semester'])['1st_Year_lag_1'].sum().reset_index()
     total_students_per_year = total_students_per_year.rename(columns={'1st_Year_lag_1': 'Total_1st_Year_Students_lag_1'})
-    print("enrollment_df", enrollment_df, "\n\n\n\n\n")
- 
-    enrollment_df.to_csv("aaa.csv")
 
     # Step 3: Merge the total students per year with the grouped data
     distribution_df = pd.merge(grouped, total_students_per_year, on=['Start_Year', 'Semester'])
@@ -456,13 +441,10 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     # Step 4: Calculate the percentage distribution of each major
     distribution_df['Percentage_Distribution_lag_1'] = (distribution_df['1st_Year_lag_1'] / distribution_df['Total_1st_Year_Students_lag_1']) * 100
     
-    enrollment_df.to_csv("aaaa.csv")
     distribution_df = distribution_df.query(f"Major == '{major}'")
     X_pred = X_pred.merge(enrollment_df, on=["Major", "Department", "Start_Year", "Semester"], how="left")
-    X_pred.to_csv("X_pred.csv")
-
-    print("X_predzzzz", len(X_pred), X_pred.tail())
     X_pred = X_pred.merge(distribution_df.drop(columns=["1st_Year_lag_1"]), on=['Start_Year', 'Semester', 'Major'])
+
     # Encode Department and Major
     dept_encoded = dept_encoder.transform(X_pred[['Department']])
     major_encoded = major_encoder.transform(X_pred[['Major']])
@@ -479,7 +461,6 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     X_pred = pd.concat([X_pred, dept_pca_df, major_pca_df], axis=1)
     
     X_pred = X_pred.drop(columns=["CPI_Region3", "Number_of_Applicants", 'TOTAL', "Department", "Start_Month", "End_Year"])
-    print("Collllll", columns)
 
     # Reorder the columns of X_pred to match the order in columns.pkl
     X_pred = X_pred.reindex(columns=columns, fill_value=None)
@@ -571,22 +552,22 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
     engine: SQLAlchemy engine object
     """
     major = data['Major'][0]
-    pred_year = data['Start_Year'].iloc[-1]
-    pred_semester = data['Semester'].iloc[-1]
+    start_year = int(start_year)
+    semester = int(semester)
+    
     major_data = data[data['Major'] == major]
     predictions = {}
     X_major = major_data.drop(columns=['Major']).reset_index(drop=True)
-    print(major_data.columns, "bbbbbbbbb")
-    # Query actual enrollment data
+    
     # Query actual enrollment data
     actual_enrollment_query = f"""
     SELECT "Start_Year", "Semester", "1st_Year"
     FROM enrollment
     WHERE "Major" = '{major}'
     AND (
-        ("Start_Year" > 2018 AND "Start_Year" < {pred_year})
+        ("Start_Year" > 2018 AND "Start_Year" < {start_year})
         OR 
-        ("Start_Year" = {pred_year} AND "Semester" <= '{pred_semester}')
+        ("Start_Year" = {start_year} AND "Semester" <= '{semester}')
     )
     ORDER BY "Start_Year" ASC, "Semester" ASC
     """
@@ -594,31 +575,26 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
     
     # Split the data into training and prediction sets
     y_major_train = actual_enrollment[
-        (actual_enrollment['Start_Year'] < pred_year) | 
-        ((actual_enrollment['Start_Year'] == pred_year) & (actual_enrollment['Semester'] < pred_semester))
+        (actual_enrollment['Start_Year'] < start_year) | 
+        ((actual_enrollment['Start_Year'] == start_year) & (actual_enrollment['Semester'] < semester))
     ]['1st_Year'].values
 
     y_major_pred = actual_enrollment[
-        (actual_enrollment['Start_Year'] == pred_year) & 
-        (actual_enrollment['Semester'] == pred_semester)
+        (actual_enrollment['Start_Year'] == start_year) & 
+        (actual_enrollment['Semester'] == semester)
     ]['1st_Year'].values
 
-    # Print the results
-    print("y_major_train:", y_major_train)
-    print("y_major_pred:", y_major_pred)
 
     # Check if y_major_pred is empty
     if len(y_major_pred) == 0:
-        print(f"No actual data available for prediction period: {pred_year} Semester {pred_semester}")
+        print(f"No actual data available for prediction period: {start_year} Semester {semester}")
     else:
-        print(f"Actual enrollment for {pred_year} Semester {pred_semester}: {y_major_pred[0]}")
+        print(f"Actual enrollment for {start_year} Semester {semester}: {y_major_pred[0]}")
         
-
     # Split X_major into train and pred
-    X_major_train = X_major[(X_major['Start_Year'] < pred_year) | ((X_major['Start_Year'] == pred_year) & (X_major['Semester'] < pred_semester))]
-    X_major_pred = X_major[(X_major['Start_Year'] == pred_year) & (X_major['Semester'] == pred_semester)]
-    X_major.to_csv("x_major.csv", index=False)
-    print(X_major_pred, "aaaaaa"*10)
+    X_major_train = X_major[(X_major['Start_Year'] < start_year) | ((X_major['Start_Year'] == start_year) & (X_major['Semester'] < semester))]
+    X_major_pred = X_major[(X_major['Start_Year'] == start_year) & (X_major['Semester'] == semester)]
+
     match(selectedModel.lower()):
         case "random_forest":
             rf_model = models["rf"]
@@ -628,7 +604,6 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
                 "train_pred": y_major_train_pred,
                 "test_pred": y_major_pred
             }
-            print("predictions", predictions)
         
         case "xgboost":     
             xgb_model = models["xgb"]
@@ -669,8 +644,12 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
                 models["knn"] = knn_model
             else:
                 knn_model = models["knn"]
+        
+
             y_major_train_pred = knn_model.predict(X_major_train)
+            # y_major_train_pred = scaler_y.inverse_transform(y_major_train_pred.reshape(-1,1)).flatten()
             y_major_pred = knn_model.predict(X_major_pred)
+            # y_major_pred = scaler_y.inverse_transform(y_major_pred.reshape(-1,1)).flatten()
             predictions = {
                 "train_pred": y_major_train_pred,
                 "test_pred": y_major_pred
@@ -700,7 +679,6 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
             rf_model = models["rf"]
             xgb_model = models["xgb"]
             ensembled_models = models["ensembled"].get(major)
-            major = data['Major'][0]
 
             ses_model = SimpleExpSmoothing(y_major_train, initialization_method="estimated").fit(smoothing_level=0.6, optimized=True, use_brute=True)
             dtrain = xgb.DMatrix(X_major_train)
@@ -726,6 +704,16 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
                 "train_pred": y_major_train_pred_combined,
                 "test_pred": y_major_pred_combined
             }
+        case "simple_exponential_smoothing":
+            ses_model = SimpleExpSmoothing(y_major_train, initialization_method="estimated").fit(smoothing_level=0.6, optimized=True, use_brute=True)
+            y_major_train_pred_ses = ses_model.fittedvalues
+            y_major_pred_ses = ses_model.forecast(steps=len(X_major_pred))
+
+            predictions = {
+                "train_pred": y_major_train_pred_ses,
+                "test_pred": y_major_pred_ses
+            }
+
 
         case _:
             return jsonify({"message": "Invalid model"}), 400
