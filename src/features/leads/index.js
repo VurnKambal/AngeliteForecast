@@ -4,12 +4,6 @@ import TitleCard from "../../components/Cards/TitleCard";
 import FunnelIcon from "@heroicons/react/24/outline/FunnelIcon";
 import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
 import SearchBar from "../../components/Input/SearchBar";
-import { useEffect, useState } from "react";
-import axios from "axios";
-import TitleCard from "../../components/Cards/TitleCard";
-import FunnelIcon from "@heroicons/react/24/outline/FunnelIcon";
-import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
-import SearchBar from "../../components/Input/SearchBar";
 
 const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
   const [filterParams, setFilterParams] = useState({ department: "" });
@@ -137,7 +131,7 @@ function Leads() {
   return (
     <>
       <TitleCard
-        title="Admission and Enrollment Data"
+        title="External Factors"
         topMargin="mt-2"
         TopSideButtons={
           <TopSideButtons

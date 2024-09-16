@@ -9,16 +9,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import joblib
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 
-from model import initialize_models, preprocess_data, make_predictions, train_models
+from model import initialize_models, preprocess_data
+from model import make_predictions, train_models
 
 app = Flask(__name__)
 CORS(app)
-
-# Initialize models
-models = initialize_models()
-
 @app.route('/test', methods=['GET'])
 def test():
     return jsonify({"message": "Test successful"}), 200
@@ -122,17 +119,14 @@ def train():
 def predict():
     data = request.get_json()
     processed_data = data['processed_data']
-    print("awewarwarwarwa", processed_data)
     df = pd.DataFrame(processed_data)
     selectedModel = data['model']
-    start_year = data['start_year']
-    semester = data['semester']
-    
-    prediction = make_predictions(ENGINE, selectedModel, models, df, start_year, semester)
+    start_year = data["start_year"]
+    semester = data["semester"]
+    window_size = data["window_size"]
+    prediction = make_predictions(ENGINE, selectedModel, models, df, start_year, semester, window_size=window_size)
     print("prediction", prediction)
-    if type(prediction) == str:
-        return jsonify({"status": "error", "message": prediction}), 400
-    return jsonify({"status": "success", "prediction": float(prediction)}), 200
+    return jsonify(float(prediction)), 200
 
 # New route to process data from React app
 @app.route('/api/process-data', methods=['POST'])
@@ -147,39 +141,31 @@ def process_data(train=False):
 
     # Ensure the data has been queried
     if enrollment_df is None:
-        query_data(ENGINE)
+        query_data(ENGINE)  # Assuming ENGINE is your database connection
+    
+    print("engine", ENGINE)
+    print(inflation_df)
     if train:
         # Process the data here using the global DataFrames
-        processed_data = preprocess_data(None, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
+        processed_data = preprocess_data(ENGINE, None, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
         print("processed_data", processed_data)
         models = train_models(processed_data)
 
     else:
-        print("models", models)
         if len(models) == 0:
             models = initialize_models()
-    # Process external data
-    use_external_data = data.get('UseExternalData', False)
-    external_data = {}
-    if use_external_data:
-        external_data = {
-            'Number_of_Applicants': data.get('AdmissionRate'),
-            'CPI_Region3': data.get('CPIEducation'),
-            'HFCE': data.get('OverallHFCE'),
-            'HFCE_Education': data.get('HFCEEducation'),
-            'Inflation_Rate': data.get('InflationRate')
-        }
-        # Remove None values (where user didn't provide input)
-        external_data = {k: v for k, v in external_data.items() if v is not None}
 
-    # Process the data here using the global DataFrames and user input
-    processed_data = preprocess_data(user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, external_data)
-
+    
+    # processed_data = preprocess_data(combined_data, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
+    processed_data = preprocess_data(ENGINE, user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
+         
+       
     response = {
         'status': 'success',
         'message': 'Data processed successfully',
-        'processed_data': processed_data.to_json(orient='records')
-    }
+        'processed_data': json.dumps(processed_data.to_dict(orient='records'), cls=NpEncoder)
+    }   
+    # print("Processed data response:", response)
     return jsonify(response), 200
 
 
@@ -199,10 +185,10 @@ def plot():
     ORDER BY "Start_Year", "Semester"
     """
     major_data = pd.read_sql(query, ENGINE)
-    
+    print(df)
     # Map semester to month
     semester_to_month = {1: 6, 2: 11}  # 1 -> June (6), 2 -> November (11)
-    
+    df[["Start_Year", "Semester"]] = df[["Start_Year", "Semester"]].astype(int)
     # Create a new column 'Date' by combining Start_Year and Semester
     major_data['Date'] = pd.to_datetime(major_data['Start_Year'].astype(str) + '-' + 
                                         major_data['Semester'].map(semester_to_month).astype(str) + '-01')

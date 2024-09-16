@@ -154,12 +154,13 @@ function InternalPage() {
                 overall_hfce: formData.OverallHFCE,
                 hfce_education: formData.HFCEEducation,
                 inflation_rate_past: formData.InflationRatePast,
-                moving_average_range: selectedModel === 'Moving_Average' ? movingAverageRange : null
+                window_size: selectedModel === 'Moving_Average' ? movingAverageRange : null
             };
 
             try {
                 var predictions = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`, predictPayload);
-                const roundedPrediction = Math.round(predictions.data["prediction"]);
+                console.log(predictions)
+                const roundedPrediction = Math.round(predictions.data);
                 document.getElementById('Prediction').innerHTML = `Prediction: ${roundedPrediction}`;
             } catch (error) {
                 console.error("Error submitting form:", error);
@@ -168,6 +169,7 @@ function InternalPage() {
             
             try {
                 const plotResponse = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`, predictions.data, {
+                    
                     responseType: 'blob', // Important for getting binary data
                 });
                 console.log('Plot Response:', plotResponse.data);
@@ -206,6 +208,11 @@ function InternalPage() {
     } else {
         console.log("Loading...");
     }
+
+    const isTimeSeriesModel = (model) => {
+        const timeSeriesModels = ['Moving_Average', 'Simple_Exponential_Smoothing'];
+        return timeSeriesModels.includes(model);
+    };
 
     return (
         <>
@@ -348,45 +355,47 @@ function InternalPage() {
                                     </optgroup>
                                     <optgroup label="Time Series Models">
                                         <option value="Moving_Average">Moving Average</option>
+                                        <option value="Simple_Exponential_Smoothing">Simple Exponential Smoothing</option>
                                     </optgroup>
                                 </select>
                             </div>
                         </div>
 
-                        {/* Moving Average Range Selection */}
-                        {selectedModel === 'Moving_Average' && (
+                        {/* External Factors Checkbox */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text required">Number of Semesters for Moving Average</span>
+                                <label className="label cursor-pointer justify-start">
+                                    <span className="label-text mr-2">Modify External Factors</span>
+                                    <input
+                                        type="checkbox"
+                                        name="UseExternalData"
+                                        checked={formData.UseExternalData}
+                                        onChange={handleChange}
+                                        className="checkbox checkbox-primary"
+                                    />
                                 </label>
-                                <input
-                                    type="number"
-                                    value={movingAverageRange}
-                                    onChange={handleMovingAverageRangeChange}
-                                    className="input input-bordered w-full"
-                                    min="2"
-                                    max="10"
-                                    required
-                                />
                             </div>
-                        )}
-
-                        {/* External Data Checkbox */}
-                        <div className="form-control">
-                            <label className="label cursor-pointer justify-start">
-                                <span className="label-text mr-2">Modify External Data</span>
-                                <input
-                                    type="checkbox"
-                                    name="UseExternalData"
-                                    checked={formData.UseExternalData}
-                                    onChange={handleChange}
-                                    className="checkbox checkbox-primary"
-                                />
-                            </label>
+                            {/* Moving Average Range Selection */}
+                            {selectedModel === 'Moving_Average' && (
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text required">Number of Semesters for Moving Average</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={movingAverageRange}
+                                        onChange={handleMovingAverageRangeChange}
+                                        className="input input-bordered w-full"
+                                        min="2"
+                                        max="10"
+                                        required
+                                    />
+                                </div>
+                            )}
                         </div>
 
-                        {/* External Data Inputs */}
-                        {formData.UseExternalData && (
+                        {/* External Factors Inputs */}
+                        {formData.UseExternalData && !isTimeSeriesModel(selectedModel) && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="form-control">
                                     <label className="label">
