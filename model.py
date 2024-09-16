@@ -576,7 +576,7 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
     major_data = data[data['Major'] == major]
     predictions = {}
     X_major = major_data.drop(columns=['Major']).reset_index(drop=True)
-    
+    print(major_data.columns, "bbbbbbbbb")
     # Query actual enrollment data
     # Query actual enrollment data
     actual_enrollment_query = f"""
