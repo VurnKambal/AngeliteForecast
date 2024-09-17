@@ -41,7 +41,7 @@ const routes = [
     name: 'Historical Data', // name that appear in Sidebar
   },
   {
-    path: '/app/charts', // url
+    path: '/app/dashboard', // url
     icon: <ChartBarIcon className={iconClasses}/>, // icon component
     name: 'Analytics', // name that appear in Sidebar
   },

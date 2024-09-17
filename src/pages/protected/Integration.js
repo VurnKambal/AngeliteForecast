@@ -142,12 +142,17 @@ function InternalPage() {
                 )
             );
 
-            const predictPayload = {
-                processed_data: cleanedProcessedData,
+            const modelField = {
                 model: selectedModel,
+                major: formData.Major,
                 year_level: formData.Year_Level,
                 start_year: formData.Start_Year,
                 semester: formData.Semester,
+            };
+
+            const predictPayload = {
+                ...modelField,
+                processed_data: cleanedProcessedData,
                 use_external_data: formData.UseExternalData,
                 admission_rate: formData.AdmissionRate,
                 cpi_education: formData.CPIEducation,
@@ -168,10 +173,17 @@ function InternalPage() {
             }
             
             try {
-                const plotResponse = await axios.post(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`, predictions.data, {
-                    
-                    responseType: 'blob', // Important for getting binary data
-                });
+                console.log("aaa", predictions)
+                const plotResponse = await axios.post(
+                    `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`,
+                    {
+                        ...predictions.data,
+                        ...modelField,
+                    },
+                    {
+                        responseType: 'blob', // Important for getting binary data
+                    }
+                );
                 console.log('Plot Response:', plotResponse.data);
                 
                 // Create a URL for the blob

@@ -123,8 +123,10 @@ def predict():
     selectedModel = data['model']
     start_year = data["start_year"]
     semester = data["semester"]
+    year_level = data["year_level"]
     window_size = data["window_size"]
-    prediction = make_predictions(ENGINE, selectedModel, models, df, start_year, semester, window_size=window_size)
+    prediction = make_predictions(ENGINE, selectedModel, models, df, start_year, semester,
+                                  year_level, window_size=window_size)
     print("prediction", prediction)
     return jsonify(float(prediction)), 200
 
@@ -169,26 +171,45 @@ def process_data(train=False):
     return jsonify(response), 200
 
 
+
+
+
+
+
 @app.route('/api/plot', methods=['POST'])
 def plot():
-    # Read the prediction results from the CSV file
-    df = pd.read_csv('prediction_results.csv')
-    major = df["Major"].iloc[0]
-    print(df,"\n\n\n")
-    print("major", df["Major"].iloc[0])
-    # Filter the DataFrame for the selected major
+    data = request.json
+    year_level = data.get('year_level', '1st_Year')  # Default to '1st_Year' if not provided
+    major = data.get('major')
+    print(data)
+    model_name = data.get('model')
+    
+    # Find the correct CSV file
+    csv_filename = f'prediction_results.csv'
+    # if not os.path.exists(csv_filename):
+    #     return jsonify({"error": f"No prediction results found for {model_name} and {year_level}"}), 404
+    
+    # Read the prediction results from the SQL database
+    query = "SELECT * FROM model_result"
+    df = pd.read_sql(query, ENGINE)
+    print(f"Prediction data:\n{df}\n\n")
+    
     # Get actual values of major data from the database
     query = f"""
-    SELECT "Start_Year", "Semester", "1st_Year"
+    SELECT "Start_Year", "Semester", "{year_level}"
     FROM processed_data
     WHERE "Major" = '{major}'
     ORDER BY "Start_Year", "Semester"
     """
     major_data = pd.read_sql(query, ENGINE)
-    print(df)
+    print(query)
+    print(f"Major data:\n{major_data}\n\n")
+    
     # Map semester to month
     semester_to_month = {1: 6, 2: 11}  # 1 -> June (6), 2 -> November (11)
     df[["Start_Year", "Semester"]] = df[["Start_Year", "Semester"]].astype(int)
+    major_data[["Start_Year", "Semester"]] = major_data[["Start_Year", "Semester"]].astype(int)
+    
     # Create a new column 'Date' by combining Start_Year and Semester
     major_data['Date'] = pd.to_datetime(major_data['Start_Year'].astype(str) + '-' + 
                                         major_data['Semester'].map(semester_to_month).astype(str) + '-01')
@@ -198,17 +219,13 @@ def plot():
     major_data = major_data.sort_values('Date')
     df = df.sort_values('Date')
 
-    
-    # Fill NaN values in the '1st_Year' column with 0 for years where we only have predictions
-    major_data['1st_Year'].fillna(0, inplace=True)
-    
-    print("Major data:", major_data)
-    print(major_data.query('2018 < Start_Year < 2024'))
-    print(df)
+    # Fill NaN values in the year_level column with 0 for years where we only have predictions
+    major_data[year_level].fillna(0, inplace=True)
     
     # Plot the time graph
-    plt.figure(figsize=(10, 6))
-    plt.plot(major_data['Date'], major_data['1st_Year'], label='Actual', marker='o')
+    plt.figure(figsize=(12, 6))
+    plt.plot(major_data['Date'], major_data[year_level], label='Actual', marker='o')
+    
     # Plot predictions for training data
     train_data = df[df['Is_Train']]
     plt.plot(train_data['Date'], train_data['Prediction'], label='Train Prediction', linestyle=':', marker='d', color='orange')
@@ -216,28 +233,28 @@ def plot():
     # Plot predictions for test data
     test_data = df[~df['Is_Train']]
     plt.plot(test_data['Date'], test_data['Prediction'], label='Test Prediction', linestyle='-.', marker='x', color='red')
+    
     plt.xlabel('Date')
-    plt.ylabel('Total Enrollment')
-    plt.title(f'Actual vs Predicted Enrollment for {major}')
+    plt.ylabel(f'{year_level} Enrollment')
+    plt.title(f'Actual vs Predicted {year_level} Enrollment for {major} using {model_name}')
     plt.legend()
     
     # Add grid for better readability
     plt.grid(True, linestyle='--', alpha=0.7)
     
-    # Rotate x-axis labels for better visibility if needed
+    # Rotate x-axis labels for better visibility
     plt.xticks(rotation=45)
     
     # Tight layout to prevent cutting off labels
     plt.tight_layout()
     
-    print("current path", os.getcwd())
-    # Save the plot to a file for debugging
-    plt.savefig('debug_plot.png', format='png', dpi=300)
-    print(f"plot saved on {os.getcwd()}/debug_plot.png")
     # Save the plot to a BytesIO object
     img = io.BytesIO()
     plt.savefig(img, format='png', dpi=300)
     img.seek(0)
+    
+    # Clear the current figure
+    plt.clf()
     
     return send_file(img, mimetype='image/png')
 

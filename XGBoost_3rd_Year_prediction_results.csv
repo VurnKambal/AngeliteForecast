@@ -1,0 +1,12 @@
+Start_Year,Semester,Major,Prediction,Is_Train
+2019,1,Accountancy,470.82806,True
+2019,2,Accountancy,443.84378,True
+2020,1,Accountancy,417.05746,True
+2020,2,Accountancy,438.76807,True
+2021,1,Accountancy,405.31717,True
+2021,2,Accountancy,404.14172,True
+2022,1,Accountancy,399.36044,True
+2022,2,Accountancy,410.19095,True
+2023,1,Accountancy,303.4077,True
+2023,2,Accountancy,290.34647,True
+2024,1,Accountancy,297.09625,False
