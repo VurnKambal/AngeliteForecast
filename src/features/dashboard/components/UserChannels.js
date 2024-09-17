@@ -1,11 +1,11 @@
 import TitleCard from "../../../components/Cards/TitleCard"
 
 const userSourceData = [
-    {source : "Facebook Ads", count : "26,345", conversionPercent : 10.2},
-    {source : "Google Ads", count : "21,341", conversionPercent : 11.7},
-    {source : "Instagram Ads", count : "34,379", conversionPercent : 12.4},
-    {source : "Affiliates", count : "12,359", conversionPercent : 20.9},
-    {source : "Organic", count : "10,345", conversionPercent : 10.3},
+    {Algorithm : "KNN", Test_SMAPE : "45.46%", Train_SMAPE : "0.00%"},
+    {Algorithm : "Google Ads", count : "21,341", conversionPercent : 11.7},
+    {Algorithm : "Instagram Ads", count : "34,379", conversionPercent : 12.4},
+    {Algorithm : "Affiliates", count : "12,359", conversionPercent : 20.9},
+    {Algorithm : "Organic", count : "10,345", conversionPercent : 10.3},
 ]
 
 function UserChannels(){
@@ -17,9 +17,9 @@ function UserChannels(){
                     <thead>
                     <tr>
                         <th></th>
-                        <th className="normal-case">Source</th>
-                        <th className="normal-case">No of Users</th>
-                        <th className="normal-case">Conversion</th>
+                        <th className="normal-case">Forecasting Algorithm</th>
+                        <th className="normal-case">Test SMAPE</th>
+                        <th className="normal-case">Train SMAPE</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -28,9 +28,9 @@ function UserChannels(){
                                 return(
                                     <tr key={k}>
                                         <th>{k+1}</th>
-                                        <td>{u.source}</td>
-                                        <td>{u.count}</td>
-                                        <td>{`${u.conversionPercent}%`}</td>
+                                        <td>{u.Algorithm}</td>
+                                        <td>{u.Test_SMAPE}</td>
+                                        <td>{u.Train_SMAPE}</td>
                                     </tr>
                                 )
                             })

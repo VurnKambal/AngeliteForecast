@@ -312,7 +312,11 @@ def clean_data(df):
         "GRAND TOTAL",
     ]
     
-    # Step 1: Replace similar majors
+    numerical_columns = ['Start_Year', 'Semester', '1st_Year', '2nd_Year',
+                         '3rd_Year', '4th_Year', '5th_Year', 'TOTAL'] + \
+                        [col for col in df.columns if col.startswith('Grade_')]
+    df[numerical_columns] = df[numerical_columns].fillna(0).astype(int)
+        # Step 1: Replace similar majors
     for old_majors, new_major  in similar_majors_dict.items():
         df['Major'] = df['Major'].replace(old_majors, new_major[0])
 
@@ -323,22 +327,28 @@ def clean_data(df):
         
     # Step 3: Rename departments
     df['Department'] = df['Department'].replace(department_dict)
-
+    
     # Step 4: Drop unwanted majors
     df = df[~df['Major'].isin(drop_majors)]
-
+    
+    df = df.fillna(0)
+    print(df.isna().sum())
     # Step 6: Combine majors with the same name within the same semester
     df = df.groupby(['Start_Year', 'Semester', 'Major', 'Department'], as_index=False).sum(["1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year", "Grade_12", "TOTAL"])
     shs_df = df[df["Department"] == "SHS"].pivot_table(index=["Start_Year", "Semester"], columns="Major", values="Grade_12").reset_index()
-    shs_df["Start_Year"] += 1
+    shs_df['Semester'] = shs_df['Semester'] % 2 + 1
+    shs_df.loc[shs_df['Semester'] == 1, 'Start_Year'] += 1
     shs_df = shs_df.fillna(0)
     shs_df = shs_df.rename(columns={col: f"{col}_lag_1" for col in shs_df.columns.drop(["Start_Year", "Semester"])})
 
     df = df[~df['Department'].isin(['GS', 'JHS', 'SHS', 'HAUSPELL'])]
     df = df[~df['Major'].isin(['TOTAL', 'GRAND TOTAL'])]
-    df = df.drop(df.loc[:, "2nd_Year":"Grade_12"].columns, axis=1)
+
+    grade_columns = [col for col in df.columns if col.startswith("Grade_")]
+    df = df.drop(columns=grade_columns)
     df = df.merge(shs_df, on=["Start_Year", "Semester"], how="left")
     df = df.reset_index(drop=True)
+    print("ddd", df.columns)
     
 
     return df
@@ -351,8 +361,6 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     dept_pca = joblib.load('data/dept_pca.pkl')
     major_pca = joblib.load('data/major_pca.pkl')
     columns = joblib.load("data/columns.pkl")
-    enrollment_df = clean_data(enrollment_df)
-    
     # Combine user input with past major data
     major = user_input['Major'].iloc[0]
     start_year = user_input['Start_Year'].iloc[0]
@@ -366,8 +374,48 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     else:
         columns.insert(3, "1st_Year")
 
-   
+    # Check if user input year and semester are in the data
+    max_year = enrollment_df['Start_Year'].max()
+    max_semester = enrollment_df[enrollment_df['Start_Year'] == max_year]['Semester'].max()
+    print(enrollment_df)
+    
+    if (user_input['Start_Year'].iloc[0] > max_year) or \
+       (user_input['Start_Year'].iloc[0] == max_year and user_input['Semester'].iloc[0] > max_semester):
+        new_year = user_input['Start_Year'].iloc[0]
+        new_semester = user_input['Semester'].iloc[0]
+        # Add a row with null values for enrollment data
+        latest_year_data = enrollment_df[enrollment_df['Start_Year'] == enrollment_df['Start_Year'].max()].copy()
+        new_row_enrollment = latest_year_data.copy()
+        new_row_enrollment['Start_Year'] = new_year
+        new_row_enrollment['Semester'] = new_semester
+        new_row_enrollment['Department'] = enrollment_df[enrollment_df['Major'] == user_input['Major'].iloc[0]]['Department'].iloc[0]
+            
+        new_row_enrollment.loc[:, "1st_Year":] = 0
 
+        enrollment_df = pd.concat([enrollment_df, new_row_enrollment], ignore_index=True)
+        print(new_row_enrollment,"uuuuuuuuu")
+        # Add a row with null values for CPI data
+        new_row_cpi = cpi_df.iloc[-1].copy()
+        new_row_cpi['Year'] = new_year
+        new_row_cpi.loc[new_row_cpi.index != 'Year'] = 0
+        cpi_df = pd.concat([cpi_df, new_row_cpi.to_frame().T], ignore_index=True)
+
+       
+        # Add a row with null values for admission data
+        new_row_admission = admission_df.iloc[-1].copy()
+        new_row_admission['Start_Year'] = new_year
+        new_row_admission['Department'] = user_input['Major'].iloc[0]
+        new_row_admission.loc[new_row_admission.index.difference(['Start_Year', 'Department'])] = 0
+        admission_df = pd.concat([admission_df, new_row_admission.to_frame().T], ignore_index=True)
+
+        # Add a row with null values for HFCE data
+        new_row_hfce = hfce_df.iloc[-1].copy()
+        new_row_hfce['Start_Year'] = new_year
+        new_row_hfce.loc[new_row_hfce.index != 'Start_Year'] = 0
+        hfce_df = pd.concat([hfce_df, new_row_hfce.to_frame().T], ignore_index=True)
+
+    enrollment_df = clean_data(enrollment_df)
+    print("sssss", enrollment_df.columns)
     # Create prediction DataFrame
     X_pred = enrollment_df[["Major", "Department", "Start_Year", "Semester"]].copy()
 
@@ -388,8 +436,7 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     cpi_df_copy = cpi_df_copy.dropna()
     cpi_df_copy[["Year"]] = cpi_df_copy[["Year"]].astype(int)
     cpi_df_copy = cpi_df_copy.groupby("Year")["CPI_Region3"].mean().reset_index()
-    cpi_df_copy = create_rolling_std(cpi_df_copy, group=None, target="CPI_Region3", window_size=6, lag_steps=1)
-
+    cpi_df_copy = create_rolling_std(cpi_df_copy, group=None, target="CPI_Region3", window_size=6, lag_steps=0)
     # Process inflation data
     inflation_df_copy = inflation_df[["Start_Year", "Inflation_Rate"]].copy()
     inflation_df_copy = inflation_df_copy.dropna()
@@ -418,16 +465,17 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     X_pred = X_pred.drop(columns=["Year"])
 
     X_pred = X_pred.merge(inflation_df_copy, on=["Start_Year"], how="left")
-    X_pred = X_pred.merge(admission_df, on=["Department", "Start_Year"], how="left")
-    X_pred = X_pred.merge(hfce_df, on=["Start_Year"], how="left")
 
+    X_pred = X_pred.merge(admission_df, on=["Department", "Start_Year"], how="left")
+
+    X_pred = X_pred.merge(hfce_df, on=["Start_Year"], how="left")
+    enrollment_df = enrollment_df.drop_duplicates()
     enrollment_df = create_lag_features(enrollment_df, lag_steps=1, target="TOTAL")
-    
     
     enrollment_df = create_lag_features(enrollment_df, lag_steps=1)
     enrollment_df = create_rolling_std(enrollment_df, lag_steps=1, window_size=3, target="1st_Year")
     enrollment_df = enrollment_df.query("Start_Year > 2018")
-
+    print(enrollment_df, "aaaaaaaaaaa")
     # Step 1: Group by year and major to get the sum of students in each major for each year
     grouped = enrollment_df.groupby(['Start_Year', 'Semester', 'Major'])['1st_Year_lag_1'].sum().reset_index()
 
@@ -460,7 +508,7 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     # Combine all processed data
     X_pred = pd.concat([X_pred, dept_pca_df, major_pca_df], axis=1)
     
-    X_pred = X_pred.drop(columns=["CPI_Region3", "Number_of_Applicants", 'TOTAL', "Department", "Start_Month", "End_Year"])
+    X_pred = X_pred.drop(columns=["CPI_Region3", "Number_of_Applicants", 'TOTAL', "Department", "Start_Month"])
 
     # Reorder the columns of X_pred to match the order in columns.pkl
     X_pred = X_pred.reindex(columns=columns, fill_value=None)
@@ -474,6 +522,7 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     # Ensure all columns in X_pred are in the correct order
     X_pred = X_pred[columns].fillna(0)
     X_pred.to_sql("model_data", engine, if_exists="replace", index=False)
+
     return X_pred
 
 # Helper functions (create_rolling_std, create_lag_features) should be defined here
@@ -704,6 +753,46 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
                 "train_pred": y_major_train_pred_combined,
                 "test_pred": y_major_pred_combined
             }
+        case "moving_average":
+            # Define the window size for the moving average
+
+            # Ensure we have enough data points for the moving average
+            if len(y_major_train) < window_size:
+                print(f"Warning: Not enough data points for moving average. Using all available data.")
+                window_size = len(y_major_train)
+
+            # Calculate moving average for training data
+            y_major_train_pred_ma = pd.Series(y_major_train).rolling(window=window_size, min_periods=1).mean().values
+
+            # Calculate moving average for test data
+            y_major_pred_ma = np.full(len(X_major_pred), y_major_train[-window_size:].mean())
+
+            predictions = {
+                "train_pred": y_major_train_pred_ma,
+                "test_pred": y_major_pred_ma
+            }
+
+            print(f"Moving Average (window size {window_size}):")
+            print(f"Last training prediction: {y_major_train_pred_ma[-1]}")
+            print(f"Test prediction: {y_major_pred_ma[0]}")
+
+            # Calculate error metrics for training data
+            train_rmse = np.sqrt(mean_squared_error(y_major_train, y_major_train_pred_ma))
+            train_mae = mean_absolute_error(y_major_train, y_major_train_pred_ma)
+            train_r2 = r2_score(y_major_train, y_major_train_pred_ma)
+
+            print(f"Training RMSE: {train_rmse}")
+            print(f"Training MAE: {train_mae}")
+            print(f"Training R2: {train_r2}")
+
+            # If we have actual test data, calculate error metrics
+            if len(y_major_pred) > 0:
+                test_rmse = np.sqrt(mean_squared_error(y_major_pred, y_major_pred_ma))
+                test_mae = mean_absolute_error(y_major_pred, y_major_pred_ma)
+                print(f"Test RMSE: {test_rmse}")
+                print(f"Test MAE: {test_mae}")
+            else:
+                print("No actual test data available for error calculation.")
         case "simple_exponential_smoothing":
             ses_model = SimpleExpSmoothing(y_major_train, initialization_method="estimated").fit(smoothing_level=0.6, optimized=True, use_brute=True)
             y_major_train_pred_ses = ses_model.fittedvalues
@@ -739,4 +828,5 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
 
     # Return the last prediction from predictions_df
     return predictions_df.iloc[-1]["Prediction"]
+
     

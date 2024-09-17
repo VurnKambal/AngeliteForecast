@@ -1,0 +1,13 @@
+Start_Year,Semester,Major,Prediction,Is_Train
+2019,1,BSBA-FinMgmt,36.0,True
+2019,2,BSBA-FinMgmt,34.5,True
+2020,1,BSBA-FinMgmt,30.333333333333332,True
+2020,2,BSBA-FinMgmt,28.25,True
+2021,1,BSBA-FinMgmt,27.25,True
+2021,2,BSBA-FinMgmt,26.0,True
+2022,1,BSBA-FinMgmt,29.75,True
+2022,2,BSBA-FinMgmt,32.5,True
+2023,1,BSBA-FinMgmt,30.25,True
+2023,2,BSBA-FinMgmt,28.5,True
+2024,1,BSBA-FinMgmt,24.25,True
+2024,2,BSBA-FinMgmt,24.25,False

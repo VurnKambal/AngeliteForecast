@@ -353,7 +353,7 @@ function InternalPage() {
                                         <option value="KNN">KNN</option>
                                     </optgroup>
                                     <optgroup label="Time Series Models">
-                                        <option value="Moving_Average">Moving Average</option>
+                                        <option value="Moving_Average" disabled>Moving Average</option>
                                         <option value="Simple_Exponential_Smoothing">Simple Exponential Smoothing</option>
                                     </optgroup>
                                 </select>
