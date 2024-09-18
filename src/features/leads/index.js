@@ -148,7 +148,7 @@ function Leads() {
                 <th>Start Year</th>
                 <th>Department</th>
                 <th>Number of Applicants</th>
-                <th>CPI Region 3</th>
+                <th>CPI Education</th>
                 <th>HFCE Education</th>
                 <th>Overall HFCE</th>
                 <th>Inflation Rate</th>

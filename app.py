@@ -110,7 +110,7 @@ def train():
     if not selected_model:
         return jsonify({"error": "Model type not specified"}), 400
 
-    df = pd.DataFrame(data['processed_data'])
+    df = pd.DataFrame(data['processed_factors'])
     models = train_models(ENGINE, df, selected_model)
     return jsonify({"message": f"{selected_model.capitalize()} model trained successfully"}), 200
 
@@ -118,8 +118,8 @@ def train():
 @app.route('/api/predict', methods=['POST'])
 def predict():
     data = request.get_json()
-    processed_data = data['processed_data']
-    df = pd.DataFrame(processed_data)
+    processed_factors = data['processed_factors']
+    df = pd.DataFrame(processed_factors)
     selectedModel = data['model']
     start_year = data["start_year"]
     semester = data["semester"]
@@ -128,7 +128,7 @@ def predict():
     prediction = make_predictions(ENGINE, selectedModel, models, df, start_year, semester,
                                   year_level, window_size=window_size)
     print("prediction", prediction)
-    return jsonify(float(prediction)), 200
+    return jsonify(prediction.to_json(orient='records')), 200
 
 # New route to process data from React app
 @app.route('/api/process-data', methods=['POST'])

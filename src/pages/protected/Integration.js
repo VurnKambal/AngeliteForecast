@@ -139,20 +139,20 @@ function InternalPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const processDataResponse = await axios.post(
+      const processFactorsResponse = await axios.post(
         `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data`,
         formData
       );
       if (
-        processDataResponse.data.status !== "success" ||
-        !processDataResponse.data.processed_data
+        processFactorsResponse.data.status !== "success" ||
+        !processFactorsResponse.data.processed_data
       ) {
-        console.error("Error processing data:", processDataResponse.data);
+        console.error("Error processing data:", processFactorsResponse.data);
         return;
       }
 
-      const processedData = JSON.parse(processDataResponse.data.processed_data);
-      const cleanedProcessedData = processedData.map((item) =>
+      const processedFactors = JSON.parse(processFactorsResponse.data.processed_data);
+      const cleanedProcessedFactors = processedFactors.map((item) =>
         Object.fromEntries(
           Object.entries(item).map(([key, value]) => [
             key,
@@ -171,7 +171,7 @@ function InternalPage() {
 
       const predictPayload = {
         ...modelField,
-        processed_data: cleanedProcessedData,
+        processed_factors: cleanedProcessedFactors,
         use_external_data: formData.UseExternalData,
         admission_rate: formData.AdmissionRate,
         cpi_education: formData.CPIEducation,
@@ -187,11 +187,17 @@ function InternalPage() {
           `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`,
           predictPayload
         );
-        console.log(predictions);
-        const roundedPrediction = Math.round(predictions.data);
+        console.log("Predictions:", predictions.data);
+        const predictionsList = JSON.parse(predictions.data);
+        const lastPrediction = predictionsList[predictionsList.length - 1];
+        console.log("Last prediction:", lastPrediction.Previous_Semester);
+        const roundedPrediction = Math.round(lastPrediction.Prediction);
         document.getElementById(
           "Prediction"
         ).innerHTML = `Prediction: ${roundedPrediction}`;
+        document.getElementById(
+          "PreviousSemester"
+        ).innerHTML = `Previous Semester: ${lastPrediction.Previous_Semester}`;
       } catch (error) {
         console.error("Error submitting form:", error);
         document.getElementById("Prediction").innerHTML =
@@ -613,13 +619,33 @@ function InternalPage() {
                 <h2 className="text-error font-semibold mb-2">
                   Results:
                 </h2>
-                <div
-                  id="Prediction"
-                  className="text-neutral prediction-text p-4 bg-warning rounded-xl overflow-y-auto"
-                >
-                  {/* Prediction content goes here */}
+                <div className="results-content">
+                  <div
+                    id="Prediction"
+                    className="text-neutral prediction-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
+                  >
+                    <h3 className="font-semibold mb-1">Prediction:</h3>
+                    {/* Prediction content goes here */}
+                  </div>
+                  
+                  <div
+                    id="PreviousSemester"
+                    className="text-neutral previous-semester-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
+                  >
+                    <h3 className="font-semibold mb-1">Previous Semester:</h3>
+                    {/* Previous semester content goes here */}
+                  </div>
+
+                  <div
+                    id="AttritionRate"
+                    className="text-neutral attrition-text p-4 bg-warning rounded-xl overflow-y-auto"
+                  >
+                    <h3 className="font-semibold mb-1">Attrition Rate:</h3>
+                    {/* Attrition rate content goes here */}
+                  </div>
                 </div>
               </div>
+              
 
               {/* Plot Container */}
               <div className="plot-container card shadow-md bg-base-100 p-4 ">

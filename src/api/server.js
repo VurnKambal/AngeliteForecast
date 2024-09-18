@@ -157,7 +157,7 @@ app.get(
 app.get("/api/departments", async (req, res) => {
   try {
     const query = {
-      text: 'SELECT DISTINCT "Department" FROM processed_data ORDER BY "Department"',
+      text: 'SELECT DISTINCT "Department" FROM processed_factors ORDER BY "Department"',
     };
     const result = await pool.query(query);
     res.json(result.rows);
@@ -294,7 +294,7 @@ app.get(
           ROUND(CAST("HFCE_Education" AS NUMERIC), 2) AS "HFCE_Education",
           ROUND(CAST("HFCE" AS NUMERIC), 2) AS "Overall_HFCE",
           ROUND(CAST("Inflation_Rate_lag_1" AS NUMERIC), 2) as "Inflation_Rate_Past"
-        FROM processed_data
+        FROM processed_factors
         WHERE "Start_Year" >= 2018
         ${department ? 'AND "Department" = $1' : ""}
         ${search ? 'AND "Department" ILIKE $2' : ""}
@@ -359,7 +359,7 @@ app.get("/api/latest-data-year", async (req, res) => {
     const latestYearQuery = {
       text: `
         SELECT MAX("Start_Year") as latest_year
-        FROM processed_data
+        FROM processed_factors
       `,
     };
 
@@ -395,7 +395,7 @@ app.get(
             "Number_of_Applicants" as "AdmissionRate",
             "HFCE" as "OverallHFCE",
             "HFCE_Education" as "HFCEEducation"
-          FROM processed_data
+          FROM processed_factors
           WHERE "Start_Year" = $1 AND "Department" = $2
           LIMIT 1
         `,
@@ -464,22 +464,22 @@ app.post(
       let query = {
         text: `
           SELECT 
-            pd.*,
+            pf.*,
             CASE WHEN $6 THEN
-              COALESCE($7, pd."Number_of_Applicants") AS "Admission_Rate",
-              COALESCE($8, pd."CPI_Region3") AS "CPI_Education",
-              COALESCE($9, pd."HFCE") AS "Overall_HFCE",
-              COALESCE($10, pd."HFCE_Education") AS "HFCE_Education",
-              COALESCE($11, pd."Inflation_Rate_lag_1") AS "Inflation_Rate_Past"
+              COALESCE($7, pf."Number_of_Applicants") AS "Admission_Rate",
+              COALESCE($8, pf."CPI_Region3") AS "CPI_Education",
+              COALESCE($9, pf."HFCE") AS "Overall_HFCE",
+              COALESCE($10, pf."HFCE_Education") AS "HFCE_Education",
+              COALESCE($11, pf."Inflation_Rate_lag_1") AS "Inflation_Rate_Past"
             ELSE
-              pd."Number_of_Applicants" as "Admission_Rate",
-              pd."CPI_Region3" as "CPI_Education",
-              pd."HFCE" as "Overall_HFCE",
-              pd."HFCE_Education" as "HFCE_Education",
-              pd."Inflation_Rate_lag_1" as "Inflation_Rate_Past"
+              pf."Number_of_Applicants" as "Admission_Rate",
+              pf."CPI_Region3" as "CPI_Education",
+              pf."HFCE" as "Overall_HFCE",
+              pf."HFCE_Education" as "HFCE_Education",
+              pf."Inflation_Rate_lag_1" as "Inflation_Rate_Past"
             END
-          FROM processed_data pd
-          WHERE pd."Start_Year" = $1 AND pd."Semester" = $2 AND pd."Department" = $3 AND pd."Major" = $4
+          FROM processed_factors pf
+          WHERE pf."Start_Year" = $1 AND pf."Semester" = $2 AND pf."Department" = $3 AND pf."Major" = $4
         `,
         values: [
           Start_Year,
@@ -506,7 +506,7 @@ app.post(
 
       res.json({
         status: "success",
-        processed_data: JSON.stringify(result.rows),
+        processed_factors: JSON.stringify(result.rows),
       });
     } catch (err) {
       console.error("Error processing data:", err);
