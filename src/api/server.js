@@ -69,62 +69,74 @@ app.get(
       } = req.query;
 
       // Start with the base query
-      let query = `SELECT * FROM enrollment WHERE "Department" NOT IN ('GS', 'JHS', 'HAUSPELL', 'HAU', 'MA')`;
+      let query = `
+      SELECT * FROM enrollment
+      WHERE "Department" NOT IN ('GS', 'JHS', 'HAUSPELL', 'HAU', 'MA')
+    `;
       const conditions = [];
       const values = [];
-      let index = 1;
 
-      // Append conditions based on parameters
+      // Check if department parameter is present
       if (department) {
-        conditions.push(`"Department" = $${index++}`);
+        conditions.push(`"Department" = $${conditions.length + 1}`);
         values.push(department);
       }
 
+      // Check if search parameter is present
       if (search) {
-        // Filter by Major with case-insensitive matching
-        conditions.push(`CAST("Major" AS TEXT) ILIKE $${index}`);
-        values.push(`%${search}%`); // % handles spaces and partial matches
-        index++;
+        conditions.push(
+          `("Major" ILIKE $${conditions.length + 1} OR "Semester" ILIKE $${
+            conditions.length + 1
+          })`
+        );
+        values.push(`%${search}%`);
       }
 
+      // Check if startYear parameter is present
       if (startYear) {
-        conditions.push(`"Start_Year" = $${index++}`);
+        conditions.push(`"Start_Year" = $${conditions.length + 1}`);
         values.push(parseInt(startYear, 10));
       }
 
+      // Check if endYear parameter is present
       if (endYear) {
-        conditions.push(`"End_Year" = $${index++}`);
+        conditions.push(`"End_Year" = $${conditions.length + 1}`);
         values.push(parseInt(endYear, 10));
       }
 
+      // Check if firstYear parameter is present
       if (firstYear) {
-        conditions.push(`"1st_Year" = $${index++}`);
+        conditions.push(`"1st_Year" = $${conditions.length + 1}`);
         values.push(parseInt(firstYear, 10));
       }
 
+      // Check if secondYear parameter is present
       if (secondYear) {
-        conditions.push(`"2nd_Year" = $${index++}`);
+        conditions.push(`"2nd_Year" = $${conditions.length + 1}`);
         values.push(parseInt(secondYear, 10));
       }
 
+      // Check if thirdYear parameter is present
       if (thirdYear) {
-        conditions.push(`"3rd_Year" = $${index++}`);
+        conditions.push(`"3rd_Year" = $${conditions.length + 1}`);
         values.push(parseInt(thirdYear, 10));
       }
 
+      // Check if fourthYear parameter is present
       if (fourthYear) {
-        conditions.push(`"4th_Year" = $${index++}`);
+        conditions.push(`"4th_Year" = $${conditions.length + 1}`);
         values.push(parseInt(fourthYear, 10));
       }
 
+      // Check if fifthYear parameter is present
       if (fifthYear) {
-        conditions.push(`"5th_Year" = $${index++}`);
+        conditions.push(`"5th_Year" = $${conditions.length + 1}`);
         values.push(parseInt(fifthYear, 10));
       }
 
       // Append conditions to the query if any
       if (conditions.length > 0) {
-        query += " AND " + conditions.join(" AND ");
+        query += " WHERE " + conditions.join(" AND ");
       }
 
       // Log the query for debugging
@@ -132,13 +144,8 @@ app.get(
       console.log("With values:", values);
 
       // Execute the query with the conditions
+
       const result = await pool.query(query, values);
-
-      // Check if any rows are returned
-      if (result.rows.length === 0) {
-        console.log("No rows returned from the query");
-      }
-
       res.json(result.rows);
     } catch (err) {
       console.error("Error occurred:", err);
@@ -278,51 +285,28 @@ app.get(
     const { department, search } = req.query;
 
     try {
-      // Base query with optional filters and search
       let query = `
-        WITH admission_data AS (
-          SELECT
-            a."Start_Year",
-            a."Department",
-            COALESCE(a."Number_of_Applicants", 0) AS "Number_of_Applicants",
-            COALESCE(a."Number_of_Enrolled_Applicants", 0) AS "Number_of_Enrolled_Applicants"
-          FROM admission a
-          WHERE 1=1
-          ${department ? 'AND a."Department" = $1' : ""}
-          ${search ? 'AND CAST(a."Department" AS TEXT) ILIKE $2' : ""}
-        ),
-        external_data AS (
-          SELECT
-            c."Year" AS "Start_Year",
-            ROUND(AVG(c."CPI_Region3")::numeric, 2) AS "CPI_Region3",
-            ROUND(AVG(hfce."HFCE")::numeric, 2) AS "HFCE",
-            ROUND(AVG(hfce."HFCE_Education")::numeric, 2) AS "HFCE_Education",
-            ROUND(AVG(i."Inflation_Rate")::numeric, 2) AS "Inflation_Rate"
-          FROM cpi_education c
-          LEFT JOIN hfce ON c."Year" = hfce."Start_Year"
-          LEFT JOIN inflation_rate i ON c."Year" = i."Start_Year"
-          GROUP BY c."Year"
-        )
         SELECT DISTINCT
-          ad."Start_Year",
-          ad."Department",
-          ad."Number_of_Applicants",
-          ad."Number_of_Enrolled_Applicants",
-          COALESCE(ed."CPI_Region3", 0) AS "CPI_Region3",
-          COALESCE(ed."HFCE", 0) AS "HFCE",
-          COALESCE(ed."HFCE_Education", 0) AS "HFCE_Education",
-          COALESCE(ed."Inflation_Rate", 0) AS "Inflation_Rate"
-        FROM admission_data ad
-        LEFT JOIN external_data ed ON ad."Start_Year" = ed."Start_Year"
-        ORDER BY ad."Start_Year" ASC, ad."Department" ASC
+          "Start_Year",
+          "Department",
+          "Number_of_Applicants",
+          ROUND(CAST("CPI_Region3" AS NUMERIC), 2) AS "CPI_Region3",
+          ROUND(CAST("HFCE_Education" AS NUMERIC), 2) AS "HFCE_Education",
+          ROUND(CAST("HFCE" AS NUMERIC), 2) AS "Overall_HFCE",
+          ROUND(CAST("Inflation_Rate_lag_1" AS NUMERIC), 2) as "Inflation_Rate_Past"
+        FROM processed_data
+        WHERE "Start_Year" >= 2018
+        ${department ? 'AND "Department" = $1' : ""}
+        ${search ? 'AND "Department" ILIKE $2' : ""}
+        ORDER BY "Start_Year" ASC, "Department" ASC
       `;
 
-      // Initialize values array
+      console.log(`Constructed Query: ${query}`);
+
       const values = [];
       if (department) values.push(department);
       if (search) values.push(`%${search}%`);
 
-      // Adjust the placeholders for the SQL query based on parameters
       const result = await pool.query(query, values);
       res.json(result.rows);
     } catch (err) {
@@ -331,111 +315,6 @@ app.get(
     }
   }
 );
-
-// Add new data
-// app.post("/api/leads/add-or-update", async (req, res) => {
-//   console.log("Request received at /api/leads/add-or-update");
-
-//   const {
-//     startYear,
-//     department,
-//     numberOfApplicants,
-//     numberOfEnrolled,
-//     cpiRegion3,
-//     hfceEducation,
-//     inflationRate,
-//   } = req.body;
-
-//   console.log("Form data received:", {
-//     startYear,
-//     department,
-//     numberOfApplicants,
-//     numberOfEnrolled,
-//     cpiRegion3,
-//     hfceEducation,
-//     inflationRate,
-//   });
-
-//   // Function to parse numeric fields or default to null
-//   const parseFloatOrNull = (value) => {
-//     return value && value.trim() !== "" ? parseFloat(value) : null;
-//   };
-
-//   const parseIntOrNull = (value) => {
-//     return value && value.trim() !== "" ? parseInt(value, 10) : null;
-//   };
-
-//   // Validate required fields
-//   if (
-//     !startYear ||
-//     !department ||
-//     numberOfApplicants == null ||
-//     numberOfEnrolled == null
-//   ) {
-//     return res.status(400).json({ error: "Missing required fields" });
-//   }
-
-//   // Prepare values for SQL queries
-//   const values = [
-//     parseInt(startYear, 10),
-//     department,
-//     parseIntOrNull(numberOfApplicants),
-//     parseIntOrNull(numberOfEnrolled),
-//     parseFloatOrNull(cpiRegion3),
-//     parseFloatOrNull(hfceEducation),
-//     parseFloatOrNull(inflationRate),
-//   ];
-
-//   try {
-//     // Check if the record exists
-//     const checkQuery = `
-//       SELECT COUNT(*) FROM admission
-//       WHERE "Start_Year" = $1 AND "Department" = $2
-//     `;
-//     console.log("Executing check query:", checkQuery, [values[0], values[1]]);
-
-//     const checkResult = await pool.query(checkQuery, [values[0], values[1]]);
-//     console.log("Check result:", checkResult.rows);
-
-//     if (parseInt(checkResult.rows[0].count, 10) > 0) {
-//       // Record exists, perform update
-//       const updateQuery = `
-//         UPDATE admission
-//         SET
-//           "Number_of_Applicants" = $3,
-//           "Number_of_Enrolled_Applicants" = $4,
-//           "CPI_Region3" = $5,
-//           "HFCE_Education" = $6,
-//           "Inflation_Rate" = $7
-//         WHERE "Start_Year" = $1 AND "Department" = $2
-//       `;
-//       console.log("Executing update query:", updateQuery, values);
-
-//       await pool.query(updateQuery, values);
-//     } else {
-//       // Record does not exist, perform insert
-//       const insertQuery = `
-//         INSERT INTO admission (
-//           "Start_Year",
-//           "Department",
-//           "Number_of_Applicants",
-//           "Number_of_Enrolled_Applicants",
-//           "CPI_Region3",
-//           "HFCE_Education",
-//           "Inflation_Rate"
-//         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-//       `;
-//       console.log("Executing insert query:", insertQuery, values);
-
-//       await pool.query(insertQuery, values);
-//     }
-
-//     res.status(200).json({ message: "Data added or updated successfully" });
-//   } catch (err) {
-//     console.error("Error executing query", err.stack);
-//     res.status(500).json({ error: `Internal Server Error: ${err.message}` });
-//   }
-// });
 
 // Login endpoint
 app.post(

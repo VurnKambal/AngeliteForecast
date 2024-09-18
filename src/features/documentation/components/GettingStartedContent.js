@@ -129,66 +129,51 @@ function GettingStartedContent() {
         <h2 id="getstarted4">How to use?</h2>
         <div class="carousel w-full">
           <div id="item1" class="carousel-item w-full">
-          <div class="card bg-secondary w-100">
+          <div class="card bg-info w-100">
               <div class="card-body">
-                <h2 class="card-title">Step 1: Access The Dashboard</h2>
-                <p>
-                  Upon logging into the website, you will be directed to the
-                  main dashboard. Here, you can view an overview of the current
-                  forecasting data and trends.
+                <h2 class="card-title text-neutral">Step 1: Access The forecasting page</h2>
+                <p class="text-neutral">
+                Click the upper left icon to display the website pages. Click on the forecasting which leads you to the "forecasting" page
                 </p>
               </div>
             </div>
           </div>
           <div id="item2" class="carousel-item w-full">
-            <div class="card bg-secondary w-100">
-              <div class="card-body">
-                <h2 class="card-title">Step 2: Input Data</h2>
-                <p>
-                  Navigate to the "Data Input" section where you can upload or
-                  manually enter relevant data such as historical enrollment
-                  numbers, demographic information, and economic indicators
-                  (e.g., CPI, Inflation Rate).
+            <div class="card bg-info w-100">
+              <div class="card-body ">
+                <h2 class="card-title text-neutral">Step 2: Select the data to be forecasted</h2>
+                <p class="text-neutral">
+                Upon reaching the forecasting page, you will be seeing a form that requires user selection in order to forecast. The selection is simple since you are only required to choose from the field of options that is being displayed.
                 </p>
               </div>
             </div>
           </div>
           <div id="item3" class="carousel-item w-full">
-            <div class="card bg-base-100 w-100">
+            <div class="card bg-info w-100">
               <div class="card-body">
-                <h2 class="card-title">Step 3: Choose Forecasting Algorithm</h2>
-                <p>
-                  Traditional Statistical Methods: Select this option to use
-                  conventional forecasting techniques, includes exponential
-                  smoothing algorithm and Dean's Prediction. Machine Learning
-                  Algorithms: Choose from various machine learning models,
-                  including Random Forest, to generate predictions based on
-                  complex patterns in the data.
+                <h2 class="card-title text-neutral">Step 3: Select the forecasting method</h2>
+                <p class="text-neutral">
+                After selecting the data to be forecasted, you may now select the algorithm of your choice. If you want to know which algorithm works best for each metrics you may go to the "metrics" page.
                 </p>
               </div>
             </div>
           </div>
           <div id="item4" class="carousel-item w-full">
-            <div class="card bg-base-100 w-100">
+            <div class="card bg-info w-100">
               <div class="card-body">
-                <h2 class="card-title">Step 4: Run Forecast</h2>
-                <p>
-                  Once your data is inputted and the forecasting method is
-                  selected, click on the "Run Forecast" button. The system will
-                  process the data and generate enrollment predictions.
+                <h2 class="card-title text-neutral">Step 4 (Optional): Adjusting External Factors</h2>
+                <p class="text-neutral">
+                This step is optional and is meant for testing out possible case scenarios for each factor. This allows you to modify each factor as desired, for referencing past datasets for said factors you may go to the "factors" page.
                 </p>
               </div>
             </div>
           </div>
           <div id="item5" class="carousel-item w-full">
-            <div class="card bg-base-100 w-100">
-              <div class="card-body">
-                <h2 class="card-title">Step 5: Analyze Results</h2>
-                <p>
-                  After the forecast is complete, you can view the results in
-                  the "Forecast Results" section. The predictions will be
-                  displayed alongside key performance metrics, allowing you to
-                  compare the effectiveness of different forecasting methods.
+            <div class="card bg-info w-100">
+              <div class="card-body ">
+                <h2 class="card-title text-neutral">Step 5: Submit and analyze the results</h2>
+                <p class="text-neutral">
+                After selecting the data and the desired forecasting method, you may now press the submit button. It will display the forecasted amount of students that are going to enroll based on your selections and a line graph displaying the difference between actual and predicted enrollment values.
                 </p>
               </div>
             </div>
@@ -245,6 +230,36 @@ function GettingStartedContent() {
 
         {/* Chart JS */}
         <h2 id="getstarted5">Forecasting Algorithms</h2>
+        <ul>
+          <li>
+            {" "}
+            <span className="font-bold">Random Forest:</span> It's an ensemble method that builds multiple decision trees. We specify the number of trees and control how deep the trees go using max_depth.
+
+          </li>
+          <li>             {" "}
+          <span className="font-bold">Linear Regression:</span> A simple model that fits a straight line to the data. It doesn't have many hyperparameters but can benefit from regularization (Ridge or Lasso).</li>
+          <li>
+            {" "}
+            <span className="font-bold">K Neighbors:</span> Makes predictions based on the k nearest data points in the feature space.
+
+          </li>
+          <li>
+            {" "}
+            <span className="font-bold">Simple Exponential Smoothing: </span>Used for time series data, predicting the next values based on the weighted sum of past values.
+          </li>
+          <li>
+            {" "}
+            <span className="font-bold">SGD Regressor:</span> A linear model trained with gradient descent. It iterates over the dataset multiple times to minimize error.
+          </li>
+          <li>
+            {" "}
+            <span className="font-bold">XGBoost (DART):</span> An advanced boosting technique that builds trees in a forward stage-wise manner while correcting the errors of previous trees.
+          </li>
+          <li>
+            {" "}
+            <span className="font-bold">Ensemble:</span> Combines multiple models (e.g., Random Forest, SES) to leverage the strengths of each.
+          </li>
+        </ul>
       </article>
     </>
   );

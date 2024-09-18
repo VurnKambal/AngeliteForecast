@@ -19,7 +19,7 @@ module.exports = {
 
           accent: "#710E1D",
 
-          neutral: "#333333",
+          neutral: "#0b0b19",
 
           "base-100": "#f2f2f2",
 
@@ -27,30 +27,30 @@ module.exports = {
 
           success: "#710E1D",
 
-          warning: "#CC9837",
+          warning: "#f2f2f2",
 
-          error: "#CC9837",
+          error: "#f2f2f2",
         },
       },
       {
         mytheme2: {
-          "primary": "#9796d5",
+          primary: "#9796d5",
 
-          "secondary": "#3a3977",
+          secondary: "#3a3977",
 
-          "accent": "#5150c2",
+          accent: "#5150c2",
 
-          "neutral": "#ebebf6",
+          neutral: "#ebebf6",
 
           "base-100": "#0b0b19",
 
-          "info": "#3a3977",
+          info: "#3a3977",
 
-          "success": "#3a3977",
+          success: "#3a3977",
 
-          "warning": "#5150c2",
+          warning: "#5150c2",
 
-          "error": "#5150c2",
+          error: "#ebebf6",
         },
       },
       "light",
