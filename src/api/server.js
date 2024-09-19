@@ -72,12 +72,13 @@ app.get(
       let query = `
       SELECT * FROM enrollment
       WHERE "Department" NOT IN ('GS', 'JHS', 'HAUSPELL', 'HAU', 'MA')
-    `;
+      `;
       const conditions = [];
       const values = [];
 
       // Check if department parameter is present
       if (department) {
+        
         conditions.push(`"Department" = $${conditions.length + 1}`);
         values.push(department);
       }
@@ -136,7 +137,7 @@ app.get(
 
       // Append conditions to the query if any
       if (conditions.length > 0) {
-        query += " WHERE " + conditions.join(" AND ");
+        query += " AND " + conditions.join(" AND ");
       }
 
       // Log the query for debugging
@@ -283,7 +284,6 @@ app.get(
   validate,
   async (req, res) => {
     const { department, search } = req.query;
-
     try {
       let query = `
         SELECT DISTINCT
@@ -297,7 +297,15 @@ app.get(
         FROM processed_factors
         WHERE "Start_Year" >= 2018
         ${department ? 'AND "Department" = $1' : ""}
-        ${search ? 'AND "Department" ILIKE $2' : ""}
+        ${search ? `
+          AND (
+            "Department" ILIKE $2 OR
+            "CPI_Region3"::TEXT ILIKE $2 OR
+            "HFCE_Education"::TEXT ILIKE $2 OR
+            "HFCE"::TEXT ILIKE $2 OR
+            "Inflation_Rate_lag_1"::TEXT ILIKE $2
+          )
+        ` : ""}
         ORDER BY "Start_Year" ASC, "Department" ASC
       `;
 

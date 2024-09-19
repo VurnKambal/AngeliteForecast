@@ -31,6 +31,11 @@ function InternalPage() {
   const [majors, setMajors] = useState([]);
   const [latestDataYear, setLatestDataYear] = useState(null);
   const [latestExternalData, setLatestExternalData] = useState({});
+  const [predictionResult, setPredictionResult] = useState({
+    Prediction: null,
+    Previous_Semester: null,
+    Attrition_Rate: null
+  });
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -183,21 +188,21 @@ function InternalPage() {
       };
 
       try {
-        var predictions = await axios.post(
+        var predictionResult = await axios.post(
           `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`,
           predictPayload
         );
-        console.log("Predictions:", predictions.data);
-        const predictionsList = JSON.parse(predictions.data);
-        const lastPrediction = predictionsList[predictionsList.length - 1];
+        const predictionsList = JSON.parse(predictionResult.data);
+        var lastPrediction = predictionsList[predictionsList.length - 1];
         console.log("Last prediction:", lastPrediction.Previous_Semester);
-        const roundedPrediction = Math.round(lastPrediction.Prediction);
-        document.getElementById(
-          "Prediction"
-        ).innerHTML = `Prediction: ${roundedPrediction}`;
-        document.getElementById(
-          "PreviousSemester"
-        ).innerHTML = `Previous Semester: ${lastPrediction.Previous_Semester}`;
+        lastPrediction = {
+          ...lastPrediction,
+          Prediction: Math.round(lastPrediction.Prediction),
+          Previous_Semester: Math.round(lastPrediction.Previous_Semester)
+        };
+        setPredictionResult(lastPrediction);
+
+        console.log(lastPrediction)
       } catch (error) {
         console.error("Error submitting form:", error);
         document.getElementById("Prediction").innerHTML =
@@ -205,11 +210,11 @@ function InternalPage() {
       }
 
       try {
-        console.log("aaa", predictions);
+        console.log("aaa", predictionResult);
         const plotResponse = await axios.post(
           `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`,
           {
-            ...predictions.data,
+            ...predictionResult.data,
             ...modelField,
           },
           {
@@ -625,7 +630,7 @@ function InternalPage() {
                     className="text-neutral prediction-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
                   >
                     <h3 className="font-semibold mb-1">Prediction:</h3>
-                    {/* Prediction content goes here */}
+                    {predictionResult.Prediction ? predictionResult.Prediction : 'N/A'}
                   </div>
                   
                   <div
@@ -633,7 +638,7 @@ function InternalPage() {
                     className="text-neutral previous-semester-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
                   >
                     <h3 className="font-semibold mb-1">Previous Semester:</h3>
-                    {/* Previous semester content goes here */}
+                    {predictionResult.Previous_Semester ? predictionResult.Previous_Semester : 'N/A'}
                   </div>
 
                   <div
@@ -641,11 +646,11 @@ function InternalPage() {
                     className="text-neutral attrition-text p-4 bg-warning rounded-xl overflow-y-auto"
                   >
                     <h3 className="font-semibold mb-1">Attrition Rate:</h3>
-                    {/* Attrition rate content goes here */}
+                    {predictionResult.Attrition_Rate ? `${predictionResult.Attrition_Rate.toFixed(2)}%` : 'N/A'}
                   </div>
                 </div>
               </div>
-              
+                
 
               {/* Plot Container */}
               <div className="plot-container card shadow-md bg-base-100 p-4 ">

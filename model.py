@@ -643,7 +643,7 @@ def train_models(engine, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, en
 # Function to make predictions
 def make_predictions(engine, selectedModel, models, data, start_year, semester, year_level, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, window_size=None):
     """
-    engine: SQLAlchemy engine objectl
+    engine: SQLAlchemy engine object
     selectedModel: selected model for prediction
     models: models for prediction
     data: DataFrame containing the data
@@ -887,11 +887,15 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
     predictions_df = pd.concat([major_data[["Start_Year", "Semester", "Major"]], predictions_df], axis=1)
     
     # Save the concatenated data to CSV
-    predictions_df.to_csv('prediction_results.csv', index=False)
     predictions_df.to_sql('model_result', engine, if_exists="replace", index=False)
 
     predictions_df = predictions_df.merge(X_major[["Start_Year", "Semester", "Previous_Semester"]], on=["Start_Year", "Semester"])
-    # Return the last prediction from predictions_df
-    return predictions_df[["Prediction", "Previous_Semester"]]
+    
+    # Calculate attrition rate
+    predictions_df['Attrition_Rate'] = (predictions_df['Previous_Semester'] - predictions_df['Prediction']) / predictions_df['Previous_Semester'] * 100
+    
+    # Return the last prediction, previous semester, and attrition rate
+    last_prediction = predictions_df.iloc[-1]
+    return predictions_df[["Prediction", "Previous_Semester", "Attrition_Rate"]]
 
     
