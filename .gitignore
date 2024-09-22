@@ -26,7 +26,6 @@ yarn-error.log*
 __pycache__/
 *.py[cod]
 *.so
-.env
 venv/
 
 
@@ -34,3 +33,7 @@ app copy.py
 database copy.ipynb
 
 debug_plot.png
+
+
+
+database.ipynb

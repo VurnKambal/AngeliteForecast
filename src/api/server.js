@@ -76,7 +76,7 @@ app.get(
       const conditions = [];
       const values = [];
 
-      // Check if department parameter is present
+      // Check if department parameter is prese`nt
       if (department) {
         
         conditions.push(`"Department" = $${conditions.length + 1}`);

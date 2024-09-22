@@ -271,6 +271,15 @@ def plot():
     return send_file(img, mimetype='image/png')
 
 
+# Update model hashes
+from hash import update_model_hashes
+
+try:
+    update_model_hashes()
+    print("Successfully updated model hashes")
+except Exception as e:
+    print(f"Error updating model hashes: {e}")
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8000)
+
+    app.run(port=8000)
