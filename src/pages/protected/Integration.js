@@ -22,7 +22,7 @@ function InternalPage() {
     CPIEducation: "",
     OverallHFCE: "",
     HFCEEducation: "",
-    InflationRate: "",
+    InflationRatePast: "",
   });
 
   const [selectedModel, setSelectedModel] = useState("");
@@ -254,7 +254,7 @@ function InternalPage() {
   const currentYear = new Date().getFullYear();
   const schoolYearOptions = [];
   if (latestDataYear >= currentYear) {
-    for (let year = 2018; year <= latestDataYear; year++) {
+    for (let year = 2019; year <= latestDataYear; year++) {
       schoolYearOptions.push(`${year}-${year + 1}`);
     }
   } else {
