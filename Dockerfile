@@ -32,7 +32,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose the ports the app runs on
-EXPOSE 5000
+EXPOSE 3000 5000 8000
 
 # Run the application
-CMD ["npm", "start", "--host", ]
+CMD ["npm", "start"]
