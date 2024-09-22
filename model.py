@@ -198,17 +198,13 @@ def initialize_models():
     # Load the models
     rf_models = joblib.load("models/rf_models.pkl")
     xgb_models = joblib.load("models/xgb_models.pkl")
-    ensembled_models = joblib.load("models/ensembled_models.pkl")
     lr_models = joblib.load("models/lr_models.pkl")
-    knn_models = joblib.load("models/knn_models.pkl")
-    svr_model = joblib.load("models/svr_model.pkl")     # NOT USED
+    knn_models = joblib.load("models/knn_models.pkl")     # NOT USED
     models = {
         "rf": rf_models,
         "xgb": xgb_models,
-        "ensembled": ensembled_models,
         "lr": lr_models,
         "knn": knn_models,
-        "svr": svr_model    # NOT USED
     }
     # models = joblib.load("models/ensembled_models.pkl")
 
@@ -810,7 +806,6 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
 
             rf_model = models["rf"].get(year_level)
             xgb_model = models["xgb"].get(year_level)
-            ensembled_models = models["ensembled"].get(major)
 
             ses_model = SimpleExpSmoothing(y_major_train, initialization_method="estimated").fit(smoothing_level=0.6, optimized=True, use_brute=True)
             dtrain = xgb.DMatrix(X_major_train, enable_categorical=True)

@@ -8,11 +8,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import joblib
+from dotenv import load_dotenv
 
 from sqlalchemy import create_engine
 
 from model import initialize_models, preprocess_data
 from model import make_predictions, train_models
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -20,11 +23,12 @@ CORS(app)
 def test():
     return jsonify({"message": "Test successful"}), 200
 
-USERNAME = 'postgres'
-PASSWORD = 'thesis'
-HOST = 'localhost'
-PORT = '5432'
-DATABASE = 'angeliteforecast'
+# Get database configuration from environment variables
+USERNAME = os.getenv('DB_USER')
+PASSWORD = os.getenv('DB_PASSWORD')
+HOST = os.getenv('DB_HOST')
+PORT = os.getenv('DB_PORT')
+DATABASE = os.getenv('DB_NAME')
 
 # Global variables to store the DataFrames
 enrollment_df = None
@@ -282,4 +286,4 @@ except Exception as e:
 
 if __name__ == '__main__':
 
-    app.run(port=8000)
+    app.run(host='0.0.0.0', debug=True, port=8000)
