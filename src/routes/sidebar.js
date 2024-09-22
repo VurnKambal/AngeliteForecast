@@ -51,7 +51,7 @@ const routes = [
     icon: <BoltIcon className={iconClasses} />,
     name: 'Forecast',
   },
-  {
+ /*  {
     path: '/app/calendar',
     icon: <CalendarDaysIcon className={iconClasses} />,
     name: 'Calendar',
@@ -131,7 +131,7 @@ const routes = [
         name: 'Components',
       },
     ],
-  },
+  }, */
 ];
 
 export default routes;

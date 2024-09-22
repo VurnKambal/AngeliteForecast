@@ -490,16 +490,18 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     cpi_df_copy = cpi_df_copy.dropna()
     cpi_df_copy[["Year"]] = cpi_df_copy[["Year"]].astype(int)
     cpi_df_copy = cpi_df_copy.groupby("Year")["CPI_Region3"].mean().reset_index()
-    print(use_external_data , "ss", 'CPIEducation' in external_data)
+    print(use_external_data , "sssss", 'CPIEducation' in external_data)
     if use_external_data and 'CPIEducation' in external_data:
         cpi_df_copy.loc[cpi_df_copy['Year'] == start_year, 'CPI_Region3'] = external_data['CPIEducation']
         print(cpi_df_copy, "cpiiii", external_data['CPIEducation'])
 
     cpi_df_copy = create_rolling_std(cpi_df_copy, group=None, target="CPI_Region3", window_size=6, lag_steps=0)
+    print(cpi_df_copy, "cccccc")
     # Process inflation data
     inflation_df_copy = inflation_df[["Start_Year", "Inflation_Rate"]].copy()
     inflation_df_copy = inflation_df_copy.dropna()
 
+    inflation_next_year = None
     if use_external_data and 'InflationRatePast' in external_data:
         inflation_df_copy.loc[inflation_df_copy['Start_Year'] == start_year, 'Inflation_Rate'] = external_data['InflationRatePast']
     else:
@@ -734,7 +736,7 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
         
         case "xgboost":     
             xgb_model = models["xgb"].get(year_level)
-
+            X_major_pred.to_sql("model_major", engine, if_exists="replace", index=False)
             dtrain = xgb.DMatrix(X_major_train, enable_categorical=True)
             dpred = xgb.DMatrix(X_major_pred, enable_categorical=True)
             try:

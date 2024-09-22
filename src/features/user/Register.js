@@ -46,12 +46,17 @@ function Register() {
   return (
     <div className="min-h-screen bg-base-200 flex items-center">
       <div className="card mx-auto w-full max-w-5xl shadow-xl">
-        <div className="grid md:grid-cols-2 grid-cols-1 bg-base-100 rounded-xl">
-          <div className=''>
+        <div className="grid grid-cols-1 bg-base-100 rounded-xl">
+{/*           <div className=''>
             <LandingIntro />
-          </div>
-          <div className='py-24 px-10'>
-            <h2 className='text-2xl font-semibold mb-2 text-center'>Register</h2>
+          </div> */}
+          <div className='pt-8 pb-24 px-10'>
+            <img
+                style={{ height: "6rem", display: "block", margin: "0 auto" }}
+                src="/logo landscape.png"
+                alt="Angelite logo"
+              />
+            <h2 className='text-2xl font-semibold mb-2 text-center'>REGISTER</h2>
             <form onSubmit={(e) => submitForm(e)}>
               <div className="mb-4">
                 <InputText defaultValue={registerObj.name} type="text" updateType="name" containerStyle="mt-4" labelTitle="Name" updateFormValue={updateFormValue} />

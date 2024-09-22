@@ -8,7 +8,7 @@ function GettingStartedContent() {
 
   return (
     <>
-      <article className="prose">
+      <article className="prose w-full max-w-full pb-10 pr-32">
         <h1 className="">Getting Started</h1>
 
         {/* Introduction */}
@@ -36,7 +36,7 @@ function GettingStartedContent() {
         </p>
 
         {/* How to Use */}
-        <h2 id="getstarted2">Website Features</h2>
+{/*         <h2 id="getstarted2">Website Features</h2>
         <ul>
           <li>
             {" "}
@@ -65,10 +65,10 @@ function GettingStartedContent() {
             {" "}
             React <span className="font-bold">chart js 2</span> examples
           </li>
-        </ul>
+        </ul> */}
 
         {/* Tailwind CSS*/}
-        <h2 id="getstarted3">Installation</h2>
+        <h2 id="getstarted2">Installation</h2>
 
         <p>
           Just clone the repository from github and then run following command (Make
@@ -126,13 +126,13 @@ function GettingStartedContent() {
         </ul> */}
 
         {/* Daisy UI */}
-        <h2 id="getstarted4">How to use?</h2>
+        <h2 id="getstarted3">How to use?</h2>
         <div class="carousel w-full">
           <div id="item1" class="carousel-item w-full">
-          <div class="card bg-info w-100">
+          <div class="card bg-info w-full">
               <div class="card-body">
-                <h2 class="card-title text-neutral">Step 1: Access The forecasting page</h2>
-                <p class="text-neutral">
+                <h2 class="card-title text-error">Step 1: Access The forecasting page</h2>
+                <p class="text-error">
                 Click the upper left icon to display the website pages. Click on the forecasting which leads you to the "forecasting" page
                 </p>
               </div>
@@ -141,8 +141,8 @@ function GettingStartedContent() {
           <div id="item2" class="carousel-item w-full">
             <div class="card bg-info w-100">
               <div class="card-body ">
-                <h2 class="card-title text-neutral">Step 2: Select the data to be forecasted</h2>
-                <p class="text-neutral">
+                <h2 class="card-title text-error">Step 2: Select the data to be forecasted</h2>
+                <p class="text-error">
                 Upon reaching the forecasting page, you will be seeing a form that requires user selection in order to forecast. The selection is simple since you are only required to choose from the field of options that is being displayed.
                 </p>
               </div>
@@ -151,8 +151,8 @@ function GettingStartedContent() {
           <div id="item3" class="carousel-item w-full">
             <div class="card bg-info w-100">
               <div class="card-body">
-                <h2 class="card-title text-neutral">Step 3: Select the forecasting method</h2>
-                <p class="text-neutral">
+                <h2 class="card-title text-error">Step 3: Select the forecasting method</h2>
+                <p class="text-error">
                 After selecting the data to be forecasted, you may now select the algorithm of your choice. If you want to know which algorithm works best for each metrics you may go to the "metrics" page.
                 </p>
               </div>
@@ -161,8 +161,8 @@ function GettingStartedContent() {
           <div id="item4" class="carousel-item w-full">
             <div class="card bg-info w-100">
               <div class="card-body">
-                <h2 class="card-title text-neutral">Step 4 (Optional): Adjusting External Factors</h2>
-                <p class="text-neutral">
+                <h2 class="card-title text-error">Step 4 (Optional): Adjusting External Factors</h2>
+                <p class="text-error">
                 This step is optional and is meant for testing out possible case scenarios for each factor. This allows you to modify each factor as desired, for referencing past datasets for said factors you may go to the "factors" page.
                 </p>
               </div>
@@ -171,33 +171,9 @@ function GettingStartedContent() {
           <div id="item5" class="carousel-item w-full">
             <div class="card bg-info w-100">
               <div class="card-body ">
-                <h2 class="card-title text-neutral">Step 5: Submit and analyze the results</h2>
-                <p class="text-neutral">
+                <h2 class="card-title text-error">Step 5: Submit and analyze the results</h2>
+                <p class="text-error">
                 After selecting the data and the desired forecasting method, you may now press the submit button. It will display the forecasted amount of students that are going to enroll based on your selections and a line graph displaying the difference between actual and predicted enrollment values.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div id="item6" class="carousel-item w-full">
-            <div class="card bg-base-100 w-100">
-              <div class="card-body">
-                <h2 class="card-title">Step 6: Download and Export</h2>
-                <p>
-                  If needed, you can download the forecast results in various
-                  formats (e.g., CSV, PDF) for further analysis or presentation.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div id="item7" class="carousel-item w-full">
-            <div class="card bg-base-100 w-100">
-              <div class="card-body">
-                <h2 class="card-title">Step 7: Evaluation and Feedback</h2>
-                <p>
-                  Use the "Evaluation" section to assess the quality of the
-                  forecasting models based on the ISO/IEC 25010 software quality
-                  model standard. You can provide feedback to improve future
-                  predictions.
                 </p>
               </div>
             </div>
@@ -220,16 +196,10 @@ function GettingStartedContent() {
           <a href="#item5" class="btn btn-m">
             5
           </a>
-          <a href="#item6" class="btn btn-m">
-            6
-          </a>
-          <a href="#item7" class="btn btn-m">
-            7
-          </a>
         </div>
 
         {/* Chart JS */}
-        <h2 id="getstarted5">Forecasting Algorithms</h2>
+        <h2 id="getstarted4">Forecasting Algorithms</h2>
         <ul>
           <li>
             {" "}
