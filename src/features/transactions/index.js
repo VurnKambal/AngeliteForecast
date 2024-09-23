@@ -121,6 +121,10 @@ function Transactions() {
     fifthYear: "",
   });
   const [search, setSearch] = useState("");
+  const [departments, setDepartments] = useState([]);
+  const [majors, setMajors] = useState([]);
+  const [latestDataYear, setLatestDataYear] = useState(null);
+  const [schoolYearOptions, setSchoolYearOptions] = useState([]);
 
   // Fetch data with optional filter and search params
   const fetchData = async () => {
@@ -159,6 +163,66 @@ function Transactions() {
     fetchData();
   }, [filterParams, search]);
 
+  // Fetch departments
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_BASE_URL}/api/departments`
+        );
+        if (response.data && Array.isArray(response.data)) {
+          setDepartments(response.data);
+        } else {
+          console.error("Unexpected department data structure:", response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching departments:", error);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
+
+  // Fetch latest data year
+  const fetchLatestDataYear = async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_BASE_URL}/api/latest-data-year`
+      );
+      if (response.data && response.data.latestYear) {
+        setLatestDataYear(response.data.latestYear);
+      } else {
+        console.error("Unexpected latest year data structure:", response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching latest data year:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchLatestDataYear();
+  }, []);
+
+  // Fetch majors based on department
+  const fetchMajors = async (department) => {
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_BASE_URL}/api/transactions/majors`,
+        {
+          params: { department },
+        }
+      );
+
+      if (response.data && Array.isArray(response.data)) {
+        setMajors(response.data);
+      } else {
+        console.error("Unexpected majors data structure:", response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching majors:", error);
+    }
+  };
+
   // Remove filter and fetch all data
   const removeFilter = () => {
     setFilterParams({
@@ -186,6 +250,60 @@ function Transactions() {
     setSearch(value);
   };
 
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    fetchData();
+  };
+
+  // Handle department change
+  const handleDepartmentChange = (e) => {
+    const department = e.target.value;
+    setFilterParams((prevData) => ({
+      ...prevData,
+      department: department,
+      major: "",
+    }));
+    fetchMajors(department);
+  };
+
+  // Handle major change
+  const handleMajorChange = (e) => {
+    console.log("major changee");
+    const major = e.target.value;
+    setFilterParams((prevData) => ({
+      ...prevData,
+      major: major,
+    }));
+  };
+
+  // Generate school year options
+  const fetchLowestYear = async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_BASE_URL}/api/transactions/lowest-enrollment-year`
+      );
+      const lowestYear = response.data.lowestYear;
+      if (latestDataYear) {
+        const options = [];
+        for (let year = lowestYear; year <= latestDataYear; year++) {
+          options.push(`${year}-${parseInt(year) + 1}`);
+        }
+        setSchoolYearOptions(options);
+      } else {
+        console.log("Loading...");
+      }
+    } catch (error) {
+      console.error("Error fetching lowest year:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (latestDataYear) {
+      fetchLowestYear();
+    }
+  }, [latestDataYear]);
+
   return (
     <>
       <TitleCard
@@ -199,12 +317,111 @@ function Transactions() {
           />
         }
       >
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text required">Department</span>
+              </label>
+              <select
+                name="department"
+                value={filterParams.department}
+                onChange={handleDepartmentChange}
+                className="select select-bordered w-full"
+                required
+              >
+                <option value="" disabled>
+                  Select Department
+                </option>
+                {departments.map((dept) => (
+                  <option key={dept.Department} value={dept.Department}>
+                    {dept.Department}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text required">Major</span>
+              </label>
+              <select
+                name="major"
+                value={filterParams.major}
+                onChange={handleMajorChange}
+                className="select select-bordered w-full"
+                disabled={!filterParams.department}
+                required
+              >
+                <option value="" disabled>
+                  Select Major
+                </option>
+                {majors.map((major, index) => (
+                  <option key={index} value={major.Major}>
+                    {major.Major}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text required">School Year</span>
+              </label>
+              <select
+                name="startYear"
+                value={filterParams.startYear}
+                onChange={(e) =>
+                  setFilterParams({
+                    ...filterParams,
+                    startYear: e.target.value,
+                  })
+                }
+                className="select select-bordered w-full"
+                required
+              >
+                <option value="" disabled>
+                  Select School Year
+                </option>
+                {schoolYearOptions.map((year) => (
+                  <option key={year} value={year.split("-")[0]}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text required">Semester</span>
+              </label>
+              <select
+                name="semester"
+                value={filterParams.semester}
+                onChange={(e) =>
+                  setFilterParams({ ...filterParams, semester: e.target.value })
+                }
+                className="select select-bordered w-full"
+                disabled={!filterParams.startYear}
+                required
+              >
+                <option value="" disabled>
+                  Select Semester
+                </option>
+                <option value="1">1st Semester</option>
+                <option value="2">2nd Semester</option>
+              </select>
+            </div>
+          </div>
+        </form>
+        <div class="divider pt-8 pb-6"></div>
         <div className="overflow-x-auto w-full">
           <table className="table w-full">
             <thead>
               <tr>
-                <th>Start_Year</th>
-                <th>End_Year</th>
+                <th>School Year</th>
                 <th>Semester</th>
                 <th>Department</th>
                 <th>Major</th>
@@ -227,11 +444,12 @@ function Transactions() {
 
                 return (
                   <tr key={k}>
-                    <td>{l.Start_Year}</td> 
-                    <td>{l.End_Year}</td> 
-                    <td>{l.Semester}</td> 
-                    <td>{l.Department}</td> 
-                    <td>{l.Major}</td> 
+                    <td>
+                      {l.Start_Year}-{l.End_Year}
+                    </td>
+                    <td>{l.Semester}</td>
+                    <td>{l.Department}</td>
+                    <td>{l.Major}</td>
                     <td>{l["1st_Year"] || 0}</td>
                     <td>{l["2nd_Year"] || 0}</td>
                     <td>{l["3rd_Year"] || 0}</td>

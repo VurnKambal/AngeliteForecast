@@ -95,9 +95,9 @@ function InternalPage() {
     const { name, value, type, checked } = e.target;
     const newValue = type === "checkbox" ? checked : value;
 
-    setFormData(prevData => ({
+    setFormData((prevData) => ({
       ...prevData,
-      [name]: newValue
+      [name]: newValue,
     }));
 
     // If school year or department changes, update external factors
@@ -108,13 +108,14 @@ function InternalPage() {
       );
 
       if (latestData) {
-        setFormData(prevData => ({
+        setFormData((prevData) => ({
           ...prevData,
           CPIEducation: prevData.CPIEducation || latestData.CPIEducation,
-          InflationRatePast: prevData.InflationRatePast || latestData.InflationRatePast,
+          InflationRatePast:
+            prevData.InflationRatePast || latestData.InflationRatePast,
           AdmissionRate: prevData.AdmissionRate || latestData.AdmissionRate,
           OverallHFCE: prevData.OverallHFCE || latestData.OverallHFCE,
-          HFCEEducation: prevData.HFCEEducation || latestData.HFCEEducation
+          HFCEEducation: prevData.HFCEEducation || latestData.HFCEEducation,
         }));
         setLatestExternalData(latestData);
       }
@@ -130,15 +131,19 @@ function InternalPage() {
     }));
 
     if (formData.Start_Year) {
-      const latestData = await fetchLatestExternalData(formData.Start_Year, department);
+      const latestData = await fetchLatestExternalData(
+        formData.Start_Year,
+        department
+      );
       if (latestData) {
-        setFormData(prevData => ({
+        setFormData((prevData) => ({
           ...prevData,
           CPIEducation: prevData.CPIEducation || latestData.CPIEducation,
-          InflationRatePast: prevData.InflationRatePast || latestData.InflationRatePast,
+          InflationRatePast:
+            prevData.InflationRatePast || latestData.InflationRatePast,
           AdmissionRate: prevData.AdmissionRate || latestData.AdmissionRate,
           OverallHFCE: prevData.OverallHFCE || latestData.OverallHFCE,
-          HFCEEducation: prevData.HFCEEducation || latestData.HFCEEducation
+          HFCEEducation: prevData.HFCEEducation || latestData.HFCEEducation,
         }));
         setLatestExternalData(latestData);
       }
@@ -292,7 +297,7 @@ function InternalPage() {
   }
 
   const isTimeSeriesModel = (model) => {
-    console.log(model)
+    console.log(model);
     const timeSeriesModels = ["Moving_Average", "Simple_Exponential_Smoothing"];
     return timeSeriesModels.includes(model);
   };
@@ -518,7 +523,8 @@ function InternalPage() {
                   />
                   <label className="label">
                     <span className="label-text-alt">
-                      Average Consumer Price Index for education in the selected year
+                      Average Consumer Price Index for education in the selected
+                      year
                     </span>
                   </label>
                 </div>

@@ -43,193 +43,47 @@ const statsData = [
   },
 ];
 
-const combinedData = [
-  {
-    Algorithm:
-      "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
-    Test_SMAPE: "29.11%",
-    Train_SMAPE: "21.44%",
-    Test_MAPE: "54.60%",
-    Train_MAPE: "33.52%",
-    Test_MAE: "9.1153",
-    Train_MAE: "7.6305",
-    Test_RMSE: "12.2706",
-    Train_RMSE: "12.6801",
-    Test_R2: "96.8033",
-    Train_R2: "98.5265",
-  },
-  {
-    Algorithm: "Simple Exponential Smoothing (EMA)",
-    Test_SMAPE: "24.16%",
-    Train_SMAPE: "27.07%",
-    Test_MAPE: "31.16%",
-    Train_MAPE: "34.90%",
-    Test_MAE: "12.0113",
-    Train_MAE: "13.1002",
-    Test_RMSE: "18.4763",
-    Train_RMSE: "23.0617",
-    Test_R2: "92.7523",
-    Train_R2: "95.1258",
-  },
-  {
-    Algorithm: "SGD Regressor",
-    Test_SMAPE: "33.25%",
-    Train_SMAPE: "37.68%",
-    Test_MAPE: "54.80%",
-    Train_MAPE: "65.68%",
-    Test_MAE: "12.3179",
-    Train_MAE: "11.1350",
-    Test_RMSE: "21.4592",
-    Train_RMSE: "20.9905",
-    Test_R2: "90.7759",
-    Train_R2: "95.9606",
-  },
-  {
-    Algorithm: "Ensemble (Simple Exponential Smoothing + Random Forest)",
-    Test_SMAPE: "37.25%",
-    Train_SMAPE: "28.87%",
-    Test_MAPE: "73.05%",
-    Train_MAPE: "60.61%",
-    Test_MAE: "15.6855",
-    Train_MAE: "8.8749",
-    Test_RMSE: "23.7927",
-    Train_RMSE: "19.5961",
-    Test_R2: "90.6345",
-    Train_R2: "96.5017",
-  },
-  {
-    Algorithm: "XGBoost DART",
-    Test_SMAPE: "38.52%",
-    Train_SMAPE: "37.63%",
-    Test_MAPE: "80.42%",
-    Train_MAPE: "119.11%",
-    Test_MAE: "16.7667",
-    Train_MAE: "10.7518",
-    Test_RMSE: "24.7067",
-    Train_RMSE: "22.2941",
-    Test_R2: "89.9011",
-    Train_R2: "95.4623",
-  },
-  {
-    Algorithm: "Random Forest",
-    Test_SMAPE: "38.52%",
-    Train_SMAPE: "28.58%",
-    Test_MAPE: "81.23%",
-    Train_MAPE: "73.51%",
-    Test_MAE: "15.7459",
-    Train_MAE: "7.0336",
-    Test_RMSE: "23.6002",
-    Train_RMSE: "14.6424",
-    Test_R2: "90.7855",
-    Train_R2: "98.0426",
-  },
-  {
-    Algorithm: "SVR",
-    Test_SMAPE: "43.28%",
-    Train_SMAPE: "43.03%",
-    Test_MAPE: "61.75%",
-    Train_MAPE: "61.30%",
-    Test_MAE: "12.6862",
-    Train_MAE: "11.6088",
-    Test_RMSE: "21.8212",
-    Train_RMSE: "22.7144",
-    Test_R2: "90.4620",
-    Train_R2: "95.2699",
-  },
-  {
-    Algorithm: "KNN",
-    Test_SMAPE: "45.46%",
-    Train_SMAPE: "0.00%",
-    Test_MAPE: "93.18%",
-    Train_MAPE: "0.00%",
-    Test_MAE: "15.6051",
-    Train_MAE: "0.0000",
-    Test_RMSE: "20.1940",
-    Train_RMSE: "0.0000",
-    Test_R2: "91.3421",
-    Train_R2: "100.0000",
-  },
-  {
-    Algorithm: "Linear Regression",
-    Test_SMAPE: "69.35%",
-    Train_SMAPE: "0.00%",
-    Test_MAPE: "94.98%",
-    Train_MAPE: "0.00%",
-    Test_MAE: "30.7678",
-    Train_MAE: "0.0000",
-    Test_RMSE: "48.3992",
-    Train_RMSE: "0.0000",
-    Test_R2: "53.7879",
-    Train_R2: "100.0000",
-  },
-];
-
 const firstYearData = [
   {
     Algorithm:
       "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
-    Test_SMAPE: "29.11%",
-    Train_SMAPE: "21.44%",
-    Test_MAPE: "54.60%",
-    Train_MAPE: "33.52%",
-    Test_MAE: "9.1153",
-    Train_MAE: "7.6305",
-    Test_RMSE: "12.2706",
-    Train_RMSE: "12.6801",
-    Test_R2: "96.8033",
-    Train_R2: "98.5265",
+    Test_SMAPE: "37.59%",
+    Train_SMAPE: "23.15%",
+    Test_MAPE: "77.29%",
+    Train_MAPE: "38.56%",
+    Test_MAE: "15.4263",
+    Train_MAE: "8.5326",
+    Test_RMSE: "23.5313",
+    Train_RMSE: "15.4626",
+    Test_R2: "90.8392",
+    Train_R2: "97.6768",
   },
   {
-    Algorithm: "Simple Exponential Smoothing (EMA)",
-    Test_SMAPE: "24.16%",
-    Train_SMAPE: "27.07%",
-    Test_MAPE: "31.16%",
-    Train_MAPE: "34.90%",
-    Test_MAE: "12.0113",
-    Train_MAE: "13.1002",
-    Test_RMSE: "18.4763",
-    Train_RMSE: "23.0617",
-    Test_R2: "92.7523",
-    Train_R2: "95.1258",
+    Algorithm: "Simple Exponential Smoothing",
+    Test_SMAPE: "39.89%",
+    Train_SMAPE: "27.44%",
+    Test_MAPE: "61.70%",
+    Train_MAPE: "36.21%",
+    Test_MAE: "14.8668",
+    Train_MAE: "13.0385",
+    Test_RMSE: "22.3832",
+    Train_RMSE: "22.6535",
+    Test_R2: "91.7113",
+    Train_R2: "95.0135",
   },
-  {
-    Algorithm: "SGD Regressor",
-    Test_SMAPE: "33.25%",
-    Train_SMAPE: "37.68%",
-    Test_MAPE: "54.80%",
-    Train_MAPE: "65.68%",
-    Test_MAE: "12.3179",
-    Train_MAE: "11.1350",
-    Test_RMSE: "21.4592",
-    Train_RMSE: "20.9905",
-    Test_R2: "90.7759",
-    Train_R2: "95.9606",
-  },
-  {
-    Algorithm: "Ensemble (Simple Exponential Smoothing + Random Forest)",
-    Test_SMAPE: "37.25%",
-    Train_SMAPE: "28.87%",
-    Test_MAPE: "73.05%",
-    Train_MAPE: "60.61%",
-    Test_MAE: "15.6855",
-    Train_MAE: "8.8749",
-    Test_RMSE: "23.7927",
-    Train_RMSE: "19.5961",
-    Test_R2: "90.6345",
-    Train_R2: "96.5017",
-  },
+
   {
     Algorithm: "XGBoost DART",
-    Test_SMAPE: "38.52%",
-    Train_SMAPE: "37.63%",
-    Test_MAPE: "80.42%",
-    Train_MAPE: "119.11%",
-    Test_MAE: "16.7667",
-    Train_MAE: "10.7518",
-    Test_RMSE: "24.7067",
-    Train_RMSE: "22.2941",
-    Test_R2: "89.9011",
-    Train_R2: "95.4623",
+    Test_SMAPE: "38.71%",
+    Train_SMAPE: "28.58%",
+    Test_MAPE: "76.69%",
+    Train_MAPE: "60.16%",
+    Test_MAE: "16.6070",
+    Train_MAE: "7.3415",
+    Test_RMSE: "25.0879",
+    Train_RMSE: "13.0439",
+    Test_R2: "89.5871",
+    Train_R2: "98.2567",
   },
   {
     Algorithm: "Random Forest",
@@ -571,106 +425,59 @@ const fourthYearData = [
 ];
 
 function Dashboard() {
-  const [testSortConfig, setTestSortConfig] = useState({
-    key: "Test_SMAPE",
+  const [trainSortConfigFirstYear, setTestSortConfigFirstYear] = useState({
+    key: "Test_SMAPE_FirstYear",
     direction: "asc",
   });
-  const [trainSortConfig, setTrainSortConfig] = useState({
-    key: "Train_SMAPE",
+  const [trainSortConfigSecondYear, setTestSortConfigSecondYear] = useState({
+    key: "Test_SMAPE_SecondYear",
     direction: "asc",
   });
-  const [trainSortConfigFirstYear, setTrainSortConfigFirstYear] = useState({
-    key: "Train_SMAPE_FirstYear",
+  const [trainSortConfigThirdYear, setTestSortConfigThirdYear] = useState({
+    key: "Test_SMAPE_ThirdYear",
     direction: "asc",
   });
-  const [trainSortConfigSecondYear, setTrainSortConfigSecondYear] = useState({
-    key: "Train_SMAPE_SecondYear",
-    direction: "asc",
-  });
-  const [trainSortConfigThirdYear, setTrainSortConfigThirdYear] = useState({
-    key: "Train_SMAPE_ThirdYear",
-    direction: "asc",
-  });
-  const [trainSortConfigFourthYear, setTrainSortConfigFourthYear] = useState({
-    key: "Train_SMAPE_FourthYear",
+  const [trainSortConfigFourthYear, setTestSortConfigFourthYear] = useState({
+    key: "Test_SMAPE_FourthYear",
     direction: "asc",
   });
 
-  const handleTestSort = (key) => {
-    const direction =
-      testSortConfig.key === key && testSortConfig.direction === "asc"
-        ? "desc"
-        : "asc";
-    setTestSortConfig({ key, direction });
-  };
-
-  const handleTrainSort = (key) => {
-    const direction =
-      trainSortConfig.key === key && trainSortConfig.direction === "asc"
-        ? "desc"
-        : "asc";
-    setTrainSortConfig({ key, direction });
-  };
-
-  const handleTrainSortFirstYear = (key) => {
+  const handleTestSortFirstYear = (key) => {
     const direction =
       trainSortConfigFirstYear.key === key &&
       trainSortConfigFirstYear.direction === "asc"
         ? "desc"
         : "asc";
-    setTrainSortConfigFirstYear({ key, direction });
+    setTestSortConfigFirstYear({ key, direction });
   };
 
-  const handleTrainSortSecondYear = (key) => {
+  const handleTestSortSecondYear = (key) => {
     const direction =
       trainSortConfigSecondYear.key === key &&
       trainSortConfigSecondYear.direction === "asc"
         ? "desc"
         : "asc";
-    setTrainSortConfigSecondYear({ key, direction });
+    setTestSortConfigSecondYear({ key, direction });
   };
 
-  const handleTrainSortThirdYear = (key) => {
+  const handleTestSortThirdYear = (key) => {
     const direction =
       trainSortConfigThirdYear.key === key &&
       trainSortConfigThirdYear.direction === "asc"
         ? "desc"
         : "asc";
-    setTrainSortConfigThirdYear({ key, direction });
+    setTestSortConfigThirdYear({ key, direction });
   };
 
-  const handleTrainSortFourthYear = (key) => {
+  const handleTestSortFourthYear = (key) => {
     const direction =
       trainSortConfigFourthYear.key === key &&
       trainSortConfigFourthYear.direction === "asc"
         ? "desc"
         : "asc";
-    setTrainSortConfigFourthYear({ key, direction });
+    setTestSortConfigFourthYear({ key, direction });
   };
 
-  const sortedTestData = [...combinedData].sort((a, b) => {
-    if (testSortConfig.direction === "asc") {
-      return (
-        parseFloat(a[testSortConfig.key]) - parseFloat(b[testSortConfig.key])
-      );
-    } else {
-      return (
-        parseFloat(b[testSortConfig.key]) - parseFloat(a[testSortConfig.key])
-      );
-    }
-  });
-
-  const sortedTrainData = [...combinedData].sort((a, b) => {
-    if (trainSortConfig.direction === "asc") {
-      return (
-        parseFloat(a[trainSortConfig.key]) - parseFloat(b[trainSortConfig.key])
-      );
-    } else {
-      return (
-        parseFloat(b[trainSortConfig.key]) - parseFloat(a[trainSortConfig.key])
-      );
-    }
-  });
   const sortedFirstYearData = [...firstYearData].sort((a, b) => {
     if (trainSortConfigFirstYear.direction === "asc") {
       return (
@@ -760,194 +567,6 @@ function Dashboard() {
                 <PageStats />
             </div> */}
 
-      {/** ---------------------- Test Data Table ------------------------- */}
-      <div>
-        <TitleCard title="Test Data">
-          <div className="overflow-x-auto">
-            <table className="table w-full">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSort("Algorithm")}
-                  >
-                    Forecasting Algorithm
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSort("Test_SMAPE")}
-                  >
-                    Test SMAPE
-                    {testSortConfig.key === "Test_SMAPE" &&
-                      (testSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSort("Test_MAPE")}
-                  >
-                    Test MAPE
-                    {testSortConfig.key === "Test_MAPE" &&
-                      (testSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSort("Test_MAE")}
-                  >
-                    Test MAE
-                    {testSortConfig.key === "Test_MAE" &&
-                      (testSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSort("Test_RMSE")}
-                  >
-                    Test RMSE
-                    {testSortConfig.key === "Test_RMSE" &&
-                      (testSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSort("Test_R2")}
-                  >
-                    Test R2
-                    {testSortConfig.key === "Test_R2" &&
-                      (testSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedTestData.map((u, k) => (
-                  <tr key={k}>
-                    <th>{k + 1}</th>
-                    <td>{u.Algorithm}</td>
-                    <td>{u.Test_SMAPE}</td>
-                    <td>{u.Test_MAPE}</td>
-                    <td>{u.Test_MAE}</td>
-                    <td>{u.Test_RMSE}</td>
-                    <td>{u.Test_R2}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TitleCard>
-      </div>
-
-      {/** ---------------------- Train Data Table ------------------------- */}
-      <div className="mt-10">
-        <TitleCard title="Train Data" topMargin="mt-2">
-          <div className="overflow-x-auto">
-            <table className="table w-full">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Algorithm")}
-                  >
-                    Forecasting Algorithm
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_SMAPE")}
-                  >
-                    Train SMAPE
-                    {trainSortConfig.key === "Train_SMAPE" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_MAPE")}
-                  >
-                    Train MAPE
-                    {trainSortConfig.key === "Train_MAPE" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_MAE")}
-                  >
-                    Train MAE
-                    {trainSortConfig.key === "Train_MAE" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_RMSE")}
-                  >
-                    Train RMSE
-                    {trainSortConfig.key === "Train_RMSE" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_R2")}
-                  >
-                    Train R2
-                    {trainSortConfig.key === "Train_R2" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedTrainData.map((u, k) => (
-                  <tr key={k}>
-                    <th>{k + 1}</th>
-                    <td>{u.Algorithm}</td>
-                    <td>{u.Train_SMAPE}</td>
-                    <td>{u.Train_MAPE}</td>
-                    <td>{u.Train_MAE}</td>
-                    <td>{u.Train_RMSE}</td>
-                    <td>{u.Train_R2}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TitleCard>
-      </div>
-
       {/** ---------------------- 1st Year ------------------------- */}
       <div className="mt-10">
         <TitleCard title="1st Year" topMargin="mt-2">
@@ -958,16 +577,16 @@ function Dashboard() {
                   <th></th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFirstYear("Algorithm")}
+                    onClick={() => handleTestSortFirstYear("Algorithm")}
                   >
                     Forecasting Algorithm
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFirstYear("Train_SMAPE")}
+                    onClick={() => handleTestSortFirstYear("Test_SMAPE")}
                   >
-                    Train SMAPE
-                    {trainSortConfigFirstYear.key === "Train_SMAPE" &&
+                    Test SMAPE
+                    {trainSortConfigFirstYear.key === "Test_SMAPE" &&
                       (trainSortConfigFirstYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -976,10 +595,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFirstYear("Train_MAPE")}
+                    onClick={() => handleTestSortFirstYear("Test_MAPE")}
                   >
-                    Train MAPE
-                    {trainSortConfigFirstYear.key === "Train_MAPE" &&
+                    Test MAPE
+                    {trainSortConfigFirstYear.key === "Test_MAPE" &&
                       (trainSortConfigFirstYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -988,10 +607,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFirstYear("Train_MAE")}
+                    onClick={() => handleTestSortFirstYear("Test_MAE")}
                   >
-                    Train MAE
-                    {trainSortConfigFirstYear.key === "Train_MAE" &&
+                    Test MAE
+                    {trainSortConfigFirstYear.key === "Test_MAE" &&
                       (trainSortConfigFirstYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1000,10 +619,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFirstYear("Train_RMSE")}
+                    onClick={() => handleTestSortFirstYear("Test_RMSE")}
                   >
-                    Train RMSE
-                    {trainSortConfigFirstYear.key === "Train_RMSE" &&
+                    Test RMSE
+                    {trainSortConfigFirstYear.key === "Test_RMSE" &&
                       (trainSortConfigFirstYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1012,10 +631,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFirstYear("Train_R2")}
+                    onClick={() => handleTestSortFirstYear("Test_R2")}
                   >
-                    Train R2
-                    {trainSortConfigFirstYear.key === "Train_R2" &&
+                    Test R2
+                    {trainSortConfigFirstYear.key === "Test_R2" &&
                       (trainSortConfigFirstYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1029,11 +648,11 @@ function Dashboard() {
                   <tr key={k}>
                     <th>{k + 1}</th>
                     <td>{u.Algorithm}</td>
-                    <td>{u.Train_SMAPE}</td>
-                    <td>{u.Train_MAPE}</td>
-                    <td>{u.Train_MAE}</td>
-                    <td>{u.Train_RMSE}</td>
-                    <td>{u.Train_R2}</td>
+                    <td>{u.Test_SMAPE}</td>
+                    <td>{u.Test_MAPE}</td>
+                    <td>{u.Test_MAE}</td>
+                    <td>{u.Test_RMSE}</td>
+                    <td>{u.Test_R2}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1053,16 +672,16 @@ function Dashboard() {
                   <th></th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortSecondYear("Algorithm")}
+                    onClick={() => handleTestSortSecondYear("Algorithm")}
                   >
                     Forecasting Algorithm
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortSecondYear("Train_SMAPE")}
+                    onClick={() => handleTestSortSecondYear("Test_SMAPE")}
                   >
-                    Train SMAPE
-                    {trainSortConfigSecondYear.key === "Train_SMAPE" &&
+                    Test SMAPE
+                    {trainSortConfigSecondYear.key === "Test_SMAPE" &&
                       (trainSortConfigSecondYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1071,10 +690,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortSecondYear("Train_MAPE")}
+                    onClick={() => handleTestSortSecondYear("Test_MAPE")}
                   >
-                    Train MAPE
-                    {trainSortConfigSecondYear.key === "Train_MAPE" &&
+                    Test MAPE
+                    {trainSortConfigSecondYear.key === "Test_MAPE" &&
                       (trainSortConfigSecondYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1083,10 +702,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortSecondYear("Train_MAE")}
+                    onClick={() => handleTestSortSecondYear("Test_MAE")}
                   >
-                    Train MAE
-                    {trainSortConfigSecondYear.key === "Train_MAE" &&
+                    Test MAE
+                    {trainSortConfigSecondYear.key === "Test_MAE" &&
                       (trainSortConfigSecondYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1095,10 +714,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortSecondYear("Train_RMSE")}
+                    onClick={() => handleTestSortSecondYear("Test_RMSE")}
                   >
-                    Train RMSE
-                    {trainSortConfigSecondYear.key === "Train_RMSE" &&
+                    Test RMSE
+                    {trainSortConfigSecondYear.key === "Test_RMSE" &&
                       (trainSortConfigSecondYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1107,10 +726,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortSecondYear("Train_R2")}
+                    onClick={() => handleTestSortSecondYear("Test_R2")}
                   >
-                    Train R2
-                    {trainSortConfigSecondYear.key === "Train_R2" &&
+                    Test R2
+                    {trainSortConfigSecondYear.key === "Test_R2" &&
                       (trainSortConfigSecondYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1124,11 +743,11 @@ function Dashboard() {
                   <tr key={k}>
                     <th>{k + 1}</th>
                     <td>{u.Algorithm}</td>
-                    <td>{u.Train_SMAPE}</td>
-                    <td>{u.Train_MAPE}</td>
-                    <td>{u.Train_MAE}</td>
-                    <td>{u.Train_RMSE}</td>
-                    <td>{u.Train_R2}</td>
+                    <td>{u.Test_SMAPE}</td>
+                    <td>{u.Test_MAPE}</td>
+                    <td>{u.Test_MAE}</td>
+                    <td>{u.Test_RMSE}</td>
+                    <td>{u.Test_R2}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1147,16 +766,16 @@ function Dashboard() {
                   <th></th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortThirdYear("Algorithm")}
+                    onClick={() => handleTestSortThirdYear("Algorithm")}
                   >
                     Forecasting Algorithm
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortThirdYear("Train_SMAPE")}
+                    onClick={() => handleTestSortThirdYear("Test_SMAPE")}
                   >
-                    Train SMAPE
-                    {trainSortConfigThirdYear.key === "Train_SMAPE" &&
+                    Test SMAPE
+                    {trainSortConfigThirdYear.key === "Test_SMAPE" &&
                       (trainSortConfigThirdYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1165,10 +784,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortThirdYear("Train_MAPE")}
+                    onClick={() => handleTestSortThirdYear("Test_MAPE")}
                   >
-                    Train MAPE
-                    {trainSortConfigThirdYear.key === "Train_MAPE" &&
+                    Test MAPE
+                    {trainSortConfigThirdYear.key === "Test_MAPE" &&
                       (trainSortConfigThirdYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1177,10 +796,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortThirdYear("Train_MAE")}
+                    onClick={() => handleTestSortThirdYear("Test_MAE")}
                   >
-                    Train MAE
-                    {trainSortConfigThirdYear.key === "Train_MAE" &&
+                    Test MAE
+                    {trainSortConfigThirdYear.key === "Test_MAE" &&
                       (trainSortConfigThirdYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1189,10 +808,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortThirdYear("Train_RMSE")}
+                    onClick={() => handleTestSortThirdYear("Test_RMSE")}
                   >
-                    Train RMSE
-                    {trainSortConfigThirdYear.key === "Train_RMSE" &&
+                    Test RMSE
+                    {trainSortConfigThirdYear.key === "Test_RMSE" &&
                       (trainSortConfigThirdYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1201,10 +820,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortThirdYear("Train_R2")}
+                    onClick={() => handleTestSortThirdYear("Test_R2")}
                   >
-                    Train R2
-                    {trainSortConfigThirdYear.key === "Train_R2" &&
+                    Test R2
+                    {trainSortConfigThirdYear.key === "Test_R2" &&
                       (trainSortConfigThirdYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1218,11 +837,11 @@ function Dashboard() {
                   <tr key={k}>
                     <th>{k + 1}</th>
                     <td>{u.Algorithm}</td>
-                    <td>{u.Train_SMAPE}</td>
-                    <td>{u.Train_MAPE}</td>
-                    <td>{u.Train_MAE}</td>
-                    <td>{u.Train_RMSE}</td>
-                    <td>{u.Train_R2}</td>
+                    <td>{u.Test_SMAPE}</td>
+                    <td>{u.Test_MAPE}</td>
+                    <td>{u.Test_MAE}</td>
+                    <td>{u.Test_RMSE}</td>
+                    <td>{u.Test_R2}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1242,16 +861,16 @@ function Dashboard() {
                   <th></th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFourthYear("Algorithm")}
+                    onClick={() => handleTestSortFourthYear("Algorithm")}
                   >
                     Forecasting Algorithm
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFourthYear("Train_SMAPE")}
+                    onClick={() => handleTestSortFourthYear("Test_SMAPE")}
                   >
-                    Train SMAPE
-                    {trainSortConfigFourthYear.key === "Train_SMAPE" &&
+                    Test SMAPE
+                    {trainSortConfigFourthYear.key === "Test_SMAPE" &&
                       (trainSortConfigFourthYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1260,10 +879,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFourthYear("Train_MAPE")}
+                    onClick={() => handleTestSortFourthYear("Test_MAPE")}
                   >
-                    Train MAPE
-                    {trainSortConfigFourthYear.key === "Train_MAPE" &&
+                    Test MAPE
+                    {trainSortConfigFourthYear.key === "Test_MAPE" &&
                       (trainSortConfigFourthYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1272,10 +891,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFourthYear("Train_MAE")}
+                    onClick={() => handleTestSortFourthYear("Test_MAE")}
                   >
-                    Train MAE
-                    {trainSortConfigFourthYear.key === "Train_MAE" &&
+                    Test MAE
+                    {trainSortConfigFourthYear.key === "Test_MAE" &&
                       (trainSortConfigFourthYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1284,10 +903,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFourthYear("Train_RMSE")}
+                    onClick={() => handleTestSortFourthYear("Test_RMSE")}
                   >
-                    Train RMSE
-                    {trainSortConfigFourthYear.key === "Train_RMSE" &&
+                    Test RMSE
+                    {trainSortConfigFourthYear.key === "Test_RMSE" &&
                       (trainSortConfigFourthYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1296,10 +915,10 @@ function Dashboard() {
                   </th>
                   <th
                     className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSortFourthYear("Train_R2")}
+                    onClick={() => handleTestSortFourthYear("Test_R2")}
                   >
-                    Train R2
-                    {trainSortConfigFourthYear.key === "Train_R2" &&
+                    Test R2
+                    {trainSortConfigFourthYear.key === "Test_R2" &&
                       (trainSortConfigFourthYear.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
                       ) : (
@@ -1313,11 +932,11 @@ function Dashboard() {
                   <tr key={k}>
                     <th>{k + 1}</th>
                     <td>{u.Algorithm}</td>
-                    <td>{u.Train_SMAPE}</td>
-                    <td>{u.Train_MAPE}</td>
-                    <td>{u.Train_MAE}</td>
-                    <td>{u.Train_RMSE}</td>
-                    <td>{u.Train_R2}</td>
+                    <td>{u.Test_SMAPE}</td>
+                    <td>{u.Test_MAPE}</td>
+                    <td>{u.Test_MAE}</td>
+                    <td>{u.Test_RMSE}</td>
+                    <td>{u.Test_R2}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1345,7 +964,7 @@ function Dashboard() {
                     className="cursor-pointer normal-case"
                     onClick={() => handleTrainSort("Train_SMAPE")}
                   >
-                    Train SMAPE
+                    Test  SMAPE
                     {trainSortConfig.key === "Train_SMAPE" &&
                       (trainSortConfig.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
@@ -1357,7 +976,7 @@ function Dashboard() {
                     className="cursor-pointer normal-case"
                     onClick={() => handleTrainSort("Train_MAPE")}
                   >
-                    Train MAPE
+                    Test  MAPE
                     {trainSortConfig.key === "Train_MAPE" &&
                       (trainSortConfig.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
@@ -1369,7 +988,7 @@ function Dashboard() {
                     className="cursor-pointer normal-case"
                     onClick={() => handleTrainSort("Train_MAE")}
                   >
-                    Train MAE
+                    Test  MAE
                     {trainSortConfig.key === "Train_MAE" &&
                       (trainSortConfig.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
@@ -1381,7 +1000,7 @@ function Dashboard() {
                     className="cursor-pointer normal-case"
                     onClick={() => handleTrainSort("Train_RMSE")}
                   >
-                    Train RMSE
+                    Test  RMSE
                     {trainSortConfig.key === "Train_RMSE" &&
                       (trainSortConfig.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />
@@ -1393,7 +1012,7 @@ function Dashboard() {
                     className="cursor-pointer normal-case"
                     onClick={() => handleTrainSort("Train_R2")}
                   >
-                    Train R2
+                    Test  R2
                     {trainSortConfig.key === "Train_R2" &&
                       (trainSortConfig.direction === "asc" ? (
                         <ChevronUpIcon className="w-5 h-5 ml-2" />

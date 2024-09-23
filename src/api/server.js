@@ -18,8 +18,7 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
 });
-app.use(limiter);
-console.log(process.env)
+console.log(process.env);
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -38,7 +37,6 @@ const validate = (req, res, next) => {
   }
   next();
 };
-
 app.get(
   "/api/transactions",
   [
@@ -51,6 +49,7 @@ app.get(
     query("thirdYear").optional().isInt(),
     query("fourthYear").optional().isInt(),
     query("fifthYear").optional().isInt(),
+    query("major").optional().isString().trim().escape(),
   ],
   validate,
   async (req, res) => {
@@ -66,6 +65,7 @@ app.get(
         thirdYear,
         fourthYear,
         fifthYear,
+        major,
       } = req.query;
 
       // Start with the base query
@@ -76,9 +76,8 @@ app.get(
       const conditions = [];
       const values = [];
 
-      // Check if department parameter is prese`nt
+      // Check if department parameter is present
       if (department) {
-        
         conditions.push(`"Department" = $${conditions.length + 1}`);
         values.push(department);
       }
@@ -135,6 +134,12 @@ app.get(
         values.push(parseInt(fifthYear, 10));
       }
 
+      // Check if major parameter is present
+      if (major) {
+        conditions.push(`"Major" = $${conditions.length + 1}`);
+        values.push(major);
+      }
+
       // Append conditions to the query if any
       if (conditions.length > 0) {
         query += " AND " + conditions.join(" AND ");
@@ -154,6 +159,52 @@ app.get(
     }
   }
 );
+
+app.get("/api/transactions/lowest-enrollment-year", async (req, res) => {
+  try {
+    const query = {
+      text: `
+        SELECT MIN("Start_Year") as lowest_year
+        FROM enrollment
+      `,
+    };
+
+    const result = await pool.query(query);
+
+    if (result.rows.length > 0) {
+      res.json({ lowestYear: result.rows[0].lowest_year });
+    } else {
+      res.status(404).json({ error: "No data found" });
+    }
+  } catch (err) {
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.get("/api/transactions/majors", async (req, res) => {
+  try {
+    const { department } = req.query;
+
+    if (!department) {
+      return res.status(400).json({ error: "Department is required" });
+    }
+
+    const query = {
+      text: `
+        SELECT DISTINCT "Major" FROM enrollment WHERE "Department" = $1
+        `,
+      values: [department],
+    };
+
+    const result = await pool.query(query);
+    console.log(result, "resulttttt");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 app.get("/api/departments", async (req, res) => {
   try {
@@ -266,9 +317,9 @@ app.post(
         text: "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
         values: [name, email, hashedPassword],
       };
-      console.log(insertQuery)
+      console.log(insertQuery);
       const result = await pool.query(insertQuery);
-      console.log(result)
+      console.log(result);
       res.status(201).json({ userId: result.rows[0].id });
     } catch (err) {
       console.error("Error occurred:", err);
@@ -299,7 +350,9 @@ app.get(
         FROM processed_factors
         WHERE "Start_Year" >= 2018
         ${department ? 'AND "Department" = $1' : ""}
-        ${search ? `
+        ${
+          search
+            ? `
           AND (
             "Department" ILIKE $2 OR
             "CPI_Region3"::TEXT ILIKE $2 OR
@@ -307,7 +360,9 @@ app.get(
             "HFCE"::TEXT ILIKE $2 OR
             "Inflation_Rate_lag_1"::TEXT ILIKE $2
           )
-        ` : ""}
+        `
+            : ""
+        }
         ORDER BY "Start_Year" ASC, "Department" ASC
       `;
 
