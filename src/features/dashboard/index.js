@@ -13,15 +13,15 @@ import DashboardTopBar from "./components/DashboardTopBar";
 import { useDispatch } from "react-redux";
 import { showNotification } from "../common/headerSlice";
 import DoughnutChart from "./components/DoughnutChart";
-import { useState } from "react";
 import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
-
+import { useEffect, useState } from "react";
+import axios from "axios";
 const statsData = [
   {
     title: "2024-2025 1st sem Total",
     value: "14,796",
     icon: <UserGroupIcon className="w-8 h-8" />,
-    description: "students",
+    description: "Students",
   },
   {
     title: "2023 Inflation rate",
@@ -174,6 +174,49 @@ function Dashboard() {
     direction: "asc",
   });
 
+  const [statsData, setStatsData] = useState([]);
+
+
+  useEffect(() => {
+    const fetchStatsData = async () => {
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/dashboard-stats`);
+        const data = response.data;
+        
+        setStatsData([
+          {
+            title: `${data.enrollment.year}-${data.enrollment.year + 1} ${data.enrollment.semester} Sem`,
+            value: data.enrollment.total.toLocaleString(),
+            icon: <UserGroupIcon className="w-8 h-8" />,
+            description: "Total Students",
+          },
+          {
+            title: `${data.inflation.year} `,
+            value: `${data.inflation.rate.toFixed(4)}%`,
+            icon: <CreditCardIcon className="w-8 h-8" />,
+            description: "Philippines Inflation Rate",
+          },
+          {
+            title: `${data.hfce.year} ${data.hfce.quarter}`,
+            value: data.hfce.value.toLocaleString(),
+            icon: <CircleStackIcon className="w-8 h-8" />,
+            description: 'Household Final Consumption Expenditure',
+          },
+          {
+            title: `${data.cpi.year}  ${data.cpi.month}`,
+            value: data.cpi.value.toFixed(1),
+            icon: <UsersIcon className="w-8 h-8" />,
+            description: `${data.cpi.region} Consumer Price Index`,
+          },
+        ]);
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        // Handle error (e.g., show error message to user)
+      }
+    };
+
+    fetchStatsData();
+  }, []);
   const handleTestSort = (key) => {
     const direction =
       testSortConfig.key === key && testSortConfig.direction === "asc"

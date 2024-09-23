@@ -19,7 +19,6 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
-console.log(process.env)
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -38,6 +37,122 @@ const validate = (req, res, next) => {
   }
   next();
 };
+// Endpoint for dashboard stats
+app.get("/api/dashboard-stats", async (req, res) => {
+  try {
+    // Create a new pool
+    const pool = new Pool({
+      user: process.env.DB_USER,
+      host: process.env.DB_HOST,
+      database: process.env.DB_NAME,
+      password: process.env.DB_PASSWORD,
+      port: process.env.DB_PORT,
+    });
+
+    // Query for enrollment data
+    const enrollmentQuery = `
+      SELECT "Start_Year", "Semester", SUM("1st_Year" + "2nd_Year" + "3rd_Year" + "4th_Year" + "5th_Year") as total
+      FROM enrollment
+      WHERE ("Start_Year", "Semester") = (
+        SELECT "Start_Year", "Semester"
+        FROM enrollment
+        ORDER BY "Start_Year" DESC, "Semester" DESC
+        LIMIT 1
+      )
+      GROUP BY "Start_Year", "Semester";
+    `;
+    const enrollmentResult = await pool.query(enrollmentQuery);
+
+    // Query for inflation rate
+    const inflationQuery = `
+      SELECT "Start_Year", "Inflation_Rate"
+      FROM inflation_rate
+      WHERE "Start_Year" = (SELECT MAX("Start_Year") FROM inflation_rate)
+      LIMIT 1;
+    `;
+    const inflationResult = await pool.query(inflationQuery);
+
+    // Query for HFCE
+    const hfceQuery = `
+      SELECT "Start_Year", "Quarter", "HFCE_Education", "HFCE"
+      FROM hfce
+      WHERE ("Start_Year", "Quarter") = (
+        SELECT "Start_Year", "Quarter"
+        FROM hfce
+        ORDER BY "Start_Year" DESC, "Quarter" DESC
+        LIMIT 1
+      );
+    `;
+    const hfceResult = await pool.query(hfceQuery);
+
+    // Query for CPI
+    const cpiQuery = `
+      WITH month_mapping AS (
+        SELECT "Year", "Month", "CPI_Region3",
+          CASE 
+            WHEN "Month" = 'Jan' THEN 1
+            WHEN "Month" = 'Feb' THEN 2
+            WHEN "Month" = 'Mar' THEN 3
+            WHEN "Month" = 'Apr' THEN 4
+            WHEN "Month" = 'May' THEN 5
+            WHEN "Month" = 'Jun' THEN 6
+            WHEN "Month" = 'Jul' THEN 7
+            WHEN "Month" = 'Aug' THEN 8
+            WHEN "Month" = 'Sep' THEN 9
+            WHEN "Month" = 'Oct' THEN 10
+            WHEN "Month" = 'Nov' THEN 11
+            WHEN "Month" = 'Dec' THEN 12
+          END AS month_number
+      FROM cpi_education
+      )
+      SELECT "Year", "Month", "CPI_Region3"
+      FROM month_mapping
+      WHERE ("Year", month_number) = (
+        SELECT "Year", MAX(month_number)
+        FROM month_mapping
+        WHERE "Year" = (SELECT MAX("Year") FROM month_mapping)
+        GROUP BY "Year"
+      );
+    `;
+    const cpiResult = await pool.query(cpiQuery);
+    const monthMap = {
+      'Jan': 'January', 'Feb': 'February', 'Mar': 'March', 'Apr': 'April',
+      'May': 'May', 'Jun': 'June', 'Jul': 'July', 'Aug': 'August',
+      'Sep': 'September', 'Oct': 'October', 'Nov': 'November', 'Dec': 'December'
+    };
+    cpiResult.rows[0].Month = monthMap[cpiResult.rows[0].Month] || cpiResult.rows[0].Month;
+
+    // Construct the response
+    const dashboardStats = {
+      enrollment: {
+        year: parseInt(enrollmentResult.rows[0].Start_Year),
+        semester: enrollmentResult.rows[0].Semester == 1 ? "1st" : "2nd",
+        total: parseInt(enrollmentResult.rows[0].total),
+      },
+      inflation: {
+        year: inflationResult.rows[0].Start_Year, // Previous year's inflation
+        rate: parseFloat(inflationResult.rows[0].Inflation_Rate),
+      },
+      hfce: {
+        year: hfceResult.rows[0].Start_Year,
+        value: parseInt(hfceResult.rows[0].HFCE),
+        quarter: ['1st', '2nd', '3rd', '4th'][hfceResult.rows[0].Quarter - 1] + ' Quarter',
+      },
+
+      cpi: {
+        year: cpiResult.rows[0].Year,
+        month: cpiResult.rows[0].Month,
+        value: parseFloat(cpiResult.rows[0].CPI_Region3),
+        region: "Region 3",
+      },
+    };
+
+    res.json(dashboardStats);
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 app.get(
   "/api/transactions",
@@ -155,6 +270,62 @@ app.get(
   }
 );
 
+app.post(
+  "/api/transactions/update",
+  [
+    body("Start_Year").isInt(),
+    body("End_Year").isInt(),
+    body("Semester").isInt(),
+    body("Department").isString().trim().escape(),
+    body("Major").isString().trim().escape(),
+    body("1st_Year").isInt(),
+    body("2nd_Year").isInt(),
+    body("3rd_Year").isInt(),
+    body("4th_Year").isInt(),
+    body("5th_Year").isInt(),
+  ],
+  validate,
+  async (req, res) => {
+    try {
+      const {
+        Start_Year,
+        End_Year,
+        Semester,
+        Department,
+        Major,
+        "1st_Year": firstYear,
+        "2nd_Year": secondYear,
+        "3rd_Year": thirdYear,
+        "4th_Year": fourthYear,
+        "5th_Year": fifthYear,
+      } = req.body;
+
+      const query = {
+        text: `
+          INSERT INTO enrollment ("Start_Year", "End_Year", "Semester", "Department", "Major", "1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year")
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          ON CONFLICT ("Start_Year", "End_Year", "Semester", "Department", "Major")
+          DO UPDATE SET
+            "1st_Year" = EXCLUDED."1st_Year",
+            "2nd_Year" = EXCLUDED."2nd_Year",
+            "3rd_Year" = EXCLUDED."3rd_Year",
+            "4th_Year" = EXCLUDED."4th_Year",
+            "5th_Year" = EXCLUDED."5th_Year"
+        `,
+        values: [Start_Year, End_Year, Semester, Department, Major, firstYear, secondYear, thirdYear, fourthYear, fifthYear],
+      };
+
+      await pool.query(query);
+
+      res.status(200).json({ message: 'Data updated successfully' });
+    } catch (err) {
+      console.error('Error updating data:', err);
+      res.status(500).json({ error: 'An error occurred while updating the data' });
+    }
+  }
+);
+
+
 app.get("/api/departments", async (req, res) => {
   try {
     const query = {
@@ -266,9 +437,7 @@ app.post(
         text: "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
         values: [name, email, hashedPassword],
       };
-      console.log(insertQuery)
       const result = await pool.query(insertQuery);
-      console.log(result)
       res.status(201).json({ userId: result.rows[0].id });
     } catch (err) {
       console.error("Error occurred:", err);
@@ -311,7 +480,6 @@ app.get(
         ORDER BY "Start_Year" ASC, "Department" ASC
       `;
 
-      console.log(`Constructed Query: ${query}`);
 
       const values = [];
       if (department) values.push(department);
