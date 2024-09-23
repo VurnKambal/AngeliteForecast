@@ -34,7 +34,7 @@ function InternalPage() {
   const [predictionResult, setPredictionResult] = useState({
     Prediction: null,
     Previous_Semester: null,
-    Attrition_Rate: null
+    Attrition_Rate: null,
   });
 
   useEffect(() => {
@@ -156,7 +156,9 @@ function InternalPage() {
         return;
       }
 
-      const processedFactors = JSON.parse(processFactorsResponse.data.processed_data);
+      const processedFactors = JSON.parse(
+        processFactorsResponse.data.processed_data
+      );
       const cleanedProcessedFactors = processedFactors.map((item) =>
         Object.fromEntries(
           Object.entries(item).map(([key, value]) => [
@@ -198,11 +200,11 @@ function InternalPage() {
         lastPrediction = {
           ...lastPrediction,
           Prediction: Math.round(lastPrediction.Prediction),
-          Previous_Semester: Math.round(lastPrediction.Previous_Semester)
+          Previous_Semester: Math.round(lastPrediction.Previous_Semester),
         };
         setPredictionResult(lastPrediction);
 
-        console.log(lastPrediction)
+        console.log(lastPrediction);
       } catch (error) {
         console.error("Error submitting form:", error);
         document.getElementById("Prediction").innerHTML =
@@ -254,7 +256,7 @@ function InternalPage() {
   const currentYear = new Date().getFullYear();
   const schoolYearOptions = [];
   if (latestDataYear >= currentYear) {
-    for (let year = 2018; year <= latestDataYear; year++) {
+    for (let year = 2019; year <= latestDataYear; year++) {
       schoolYearOptions.push(`${year}-${year + 1}`);
     }
   } else {
@@ -621,24 +623,26 @@ function InternalPage() {
             <div className="grid grid-cols-1 md:grid-cols-[25%,75%] gap-4">
               {/* Prediction Container */}
               <div className="prediction-container card shadow-md bg-info p-4">
-                <h2 className="text-error font-semibold mb-2">
-                  Results:
-                </h2>
+                <h2 className="text-error font-semibold mb-2">Results:</h2>
                 <div className="results-content">
                   <div
                     id="Prediction"
                     className="text-neutral prediction-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
                   >
                     <h3 className="font-semibold mb-1">Prediction:</h3>
-                    {predictionResult.Prediction ? predictionResult.Prediction : 'N/A'}
+                    {predictionResult.Prediction
+                      ? predictionResult.Prediction
+                      : "N/A"}
                   </div>
-                  
+
                   <div
                     id="PreviousSemester"
                     className="text-neutral previous-semester-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
                   >
                     <h3 className="font-semibold mb-1">Previous Semester:</h3>
-                    {predictionResult.Previous_Semester ? predictionResult.Previous_Semester : 'N/A'}
+                    {predictionResult.Previous_Semester
+                      ? predictionResult.Previous_Semester
+                      : "N/A"}
                   </div>
 
                   <div
@@ -646,11 +650,12 @@ function InternalPage() {
                     className="text-neutral attrition-text p-4 bg-warning rounded-xl overflow-y-auto"
                   >
                     <h3 className="font-semibold mb-1">Attrition Rate:</h3>
-                    {predictionResult.Attrition_Rate ? `${predictionResult.Attrition_Rate.toFixed(2)}%` : 'N/A'}
+                    {predictionResult.Attrition_Rate
+                      ? `${predictionResult.Attrition_Rate.toFixed(2)}%`
+                      : "N/A"}
                   </div>
                 </div>
               </div>
-                
 
               {/* Plot Container */}
               <div className="plot-container card shadow-md bg-base-100 p-4 ">
