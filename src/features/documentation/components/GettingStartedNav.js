@@ -4,7 +4,7 @@ function GettingStartedNav({activeIndex}){
 
     const SECTION_NAVS = [
         {name : "Introduction", isActive : activeIndex === 1 ? true : false},
-        {name : "Website Features", isActive : false},
+        // {name : "Website Features", isActive : false},
         {name : "Installation", isActive : false},
         {name : "How to Use?", isActive : false},
         {name : "Algorithms", isActive : false},

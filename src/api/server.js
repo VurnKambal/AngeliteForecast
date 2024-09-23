@@ -19,7 +19,7 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
-
+console.log(process.env)
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -76,7 +76,7 @@ app.get(
       const conditions = [];
       const values = [];
 
-      // Check if department parameter is present
+      // Check if department parameter is prese`nt
       if (department) {
         
         conditions.push(`"Department" = $${conditions.length + 1}`);
@@ -266,7 +266,9 @@ app.post(
         text: "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
         values: [name, email, hashedPassword],
       };
+      console.log(insertQuery)
       const result = await pool.query(insertQuery);
+      console.log(result)
       res.status(201).json({ userId: result.rows[0].id });
     } catch (err) {
       console.error("Error occurred:", err);

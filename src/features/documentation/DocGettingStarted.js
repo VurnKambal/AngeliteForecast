@@ -1,36 +1,25 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useDispatch } from "react-redux"
-import TitleCard from "../../components/Cards/TitleCard"
-import { setPageTitle, showNotification } from "../common/headerSlice"
+import { setPageTitle } from "../common/headerSlice"
 import GettingStartedNav from "./components/GettingStartedNav"
-import ReadMe from "./components/GettingStartedContent"
 import GettingStartedContent from "./components/GettingStartedContent"
 
-
-
 function GettingStarted(){
-
     const dispatch = useDispatch()
 
     useEffect(() => {
-        dispatch(setPageTitle({ title : "Dashboard"}))
-      }, [])
-
+        dispatch(setPageTitle({ title : "Getting Started"}))
+    }, [dispatch])
 
     return(
-        <>
-            <div className="bg-base-100  flex overflow-hidden rounded-lg" style={{height : "82vh"}}>
-                    <div className="flex-none p-4">
-                        <GettingStartedNav activeIndex={1}/>
-                    </div>
-
-                    <div className="grow pt-16 overflow-y-scroll">
-                        <GettingStartedContent />
-                    </div>
-
-                </div>
-           
-        </>
+        <div className="flex bg-base-100 overflow-hidden">
+            <div className="w-64 fixed h-full overflow-y-auto bg-base-200 p-4">
+                <GettingStartedNav activeIndex={1}/>
+            </div>
+            <div className="flex-1 ml-64 p-8">
+                <GettingStartedContent />
+            </div>
+        </div>
     )
 }
 

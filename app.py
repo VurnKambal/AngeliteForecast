@@ -8,11 +8,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import joblib
+from dotenv import load_dotenv
 
 from sqlalchemy import create_engine
 
 from model import initialize_models, preprocess_data
 from model import make_predictions, train_models
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -20,11 +23,12 @@ CORS(app)
 def test():
     return jsonify({"message": "Test successful"}), 200
 
-USERNAME = 'postgres'
-PASSWORD = 'thesis'
-HOST = 'localhost'
-PORT = '5432'
-DATABASE = 'angeliteforecast'
+# Get database configuration from environment variables
+USERNAME = os.getenv('DB_USER')
+PASSWORD = os.getenv('DB_PASSWORD')
+HOST = os.getenv('DB_HOST')
+PORT = os.getenv('DB_PORT')
+DATABASE = os.getenv('DB_NAME')
 
 # Global variables to store the DataFrames
 enrollment_df = None
@@ -118,8 +122,11 @@ def train():
 @app.route('/api/predict', methods=['POST'])
 def predict():
     data = request.get_json()
+     
     processed_factors = data['processed_factors']
     df = pd.DataFrame(processed_factors)
+   
+    
     selectedModel = data['model']
     start_year = data["start_year"]
     semester = data["semester"]
@@ -134,40 +141,50 @@ def predict():
 @app.route('/api/process-data', methods=['POST'])
 def process_data(train=False):
     global models, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df
-    print(models)
 
     data = request.get_json()
     user_input = pd.DataFrame([data])
     numerical_features = ["Start_Year", "Semester"]
     user_input[numerical_features] = user_input[numerical_features].astype(int)
-
+    use_external_data = data.get("UseExternalData")
+    print(data, "dataaaaaaaaaaa", use_external_data)
     # Ensure the data has been queried
     if enrollment_df is None:
         query_data(ENGINE)  # Assuming ENGINE is your database connection
     
     print("engine", ENGINE)
     print(inflation_df)
+
+    # Prepare external data
+    external_data = {}
+    if use_external_data:
+        if data.get('AdmissionRate'):
+            external_data['AdmissionRate'] = data['AdmissionRate']
+        if data.get('CPIEducation'):
+            external_data['CPIEducation'] = data['CPIEducation']
+        if data.get('OverallHFCE'):
+            external_data['OverallHFCE'] = data['OverallHFCE']
+        if data.get('HFCEEducation'):
+            external_data['HFCEEducation'] = data['HFCEEducation']
+        if data.get('InflationRatePast'):
+            external_data['InflationRatePast'] = data['InflationRatePast']
+
     if train:
         # Process the data here using the global DataFrames
-        processed_data = preprocess_data(ENGINE, None, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
+        processed_data = preprocess_data(ENGINE, None, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, use_external_data=use_external_data, external_data=external_data)
         print("processed_data", processed_data)
         models = train_models(processed_data)
-
     else:
         if len(models) == 0:
             models = initialize_models()
-
+    processed_data = preprocess_data(ENGINE, user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, use_external_data=use_external_data, external_data=external_data)
     
-    # processed_data = preprocess_data(combined_data, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
-    processed_data = preprocess_data(ENGINE, user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df)
-         
-       
+    processed_data.to_csv("b.csv")
     response = {
         'status': 'success',
         'message': 'Data processed successfully',
         'processed_data': json.dumps(processed_data.to_dict(orient='records'), cls=NpEncoder)
     }   
-    # print("Processed data response:", response)
     return jsonify(response), 200
 
 
@@ -181,7 +198,6 @@ def plot():
     data = request.json
     year_level = data.get('year_level', '1st_Year')  # Default to '1st_Year' if not provided
     major = data.get('major')
-    print(data)
     model_name = data.get('model')
     
     # Find the correct CSV file
@@ -259,6 +275,15 @@ def plot():
     return send_file(img, mimetype='image/png')
 
 
+# Update model hashes
+from hash import update_model_hashes
+
+try:
+    update_model_hashes()
+    print("Successfully updated model hashes")
+except Exception as e:
+    print(f"Error updating model hashes: {e}")
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8000)
+
+    app.run(host='0.0.0.0', debug=True, port=8000)

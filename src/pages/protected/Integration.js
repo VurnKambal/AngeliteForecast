@@ -75,7 +75,7 @@ function InternalPage() {
     fetchLatestDataYear();
   }, []);
 
-  const fetchExternalData = async (schoolYear, department) => {
+  const fetchLatestExternalData = async (schoolYear, department) => {
     try {
       const response = await axios.get(
         `${process.env.REACT_APP_API_BASE_URL}/api/external-data`,
@@ -91,16 +91,33 @@ function InternalPage() {
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === "checkbox" ? checked : value;
-    setFormData((prevData) => ({
+
+    setFormData(prevData => ({
       ...prevData,
-      [name]: newValue,
+      [name]: newValue
     }));
 
-    if (name === "Start_Year" && value && formData.Department) {
-      fetchExternalData(value, formData.Department);
+    // If school year or department changes, update external factors
+    if (name === "Start_Year" || name === "Department") {
+      const latestData = await fetchLatestExternalData(
+        name === "Start_Year" ? value : formData.Start_Year,
+        name === "Department" ? value : formData.Department
+      );
+
+      if (latestData) {
+        setFormData(prevData => ({
+          ...prevData,
+          CPIEducation: prevData.CPIEducation || latestData.CPIEducation,
+          InflationRatePast: prevData.InflationRatePast || latestData.InflationRatePast,
+          AdmissionRate: prevData.AdmissionRate || latestData.AdmissionRate,
+          OverallHFCE: prevData.OverallHFCE || latestData.OverallHFCE,
+          HFCEEducation: prevData.HFCEEducation || latestData.HFCEEducation
+        }));
+        setLatestExternalData(latestData);
+      }
     }
   };
 
@@ -113,7 +130,18 @@ function InternalPage() {
     }));
 
     if (formData.Start_Year) {
-      fetchExternalData(formData.Start_Year, department);
+      const latestData = await fetchLatestExternalData(formData.Start_Year, department);
+      if (latestData) {
+        setFormData(prevData => ({
+          ...prevData,
+          CPIEducation: prevData.CPIEducation || latestData.CPIEducation,
+          InflationRatePast: prevData.InflationRatePast || latestData.InflationRatePast,
+          AdmissionRate: prevData.AdmissionRate || latestData.AdmissionRate,
+          OverallHFCE: prevData.OverallHFCE || latestData.OverallHFCE,
+          HFCEEducation: prevData.HFCEEducation || latestData.HFCEEducation
+        }));
+        setLatestExternalData(latestData);
+      }
     }
 
     try {
@@ -264,6 +292,7 @@ function InternalPage() {
   }
 
   const isTimeSeriesModel = (model) => {
+    console.log(model)
     const timeSeriesModels = ["Moving_Average", "Simple_Exponential_Smoothing"];
     return timeSeriesModels.includes(model);
   };
@@ -399,6 +428,7 @@ function InternalPage() {
                   <span className="label-text required">Model</span>
                 </label>
                 <select
+                  name="Model"
                   value={selectedModel}
                   onChange={handleModelChange}
                   className="select select-bordered w-full"
@@ -477,23 +507,18 @@ function InternalPage() {
                   <input
                     type="number"
                     name="CPIEducation"
-                    value={
-                      formData.CPIEducation ||
-                      latestExternalData.CPIEducation ||
-                      ""
-                    }
+                    value={formData.CPIEducation || ""}
                     onChange={handleChange}
                     className="input input-bordered w-full"
                     placeholder={
                       latestExternalData.CPIEducation
-                        ? `Latest: ${latestExternalData.CPIEducation}`
-                        : "No updated data available"
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.CPIEducation}`
+                        : "No data available for selected year"
                     }
                   />
                   <label className="label">
                     <span className="label-text-alt">
-                      Average Consumer Price Index for education in the current
-                      year
+                      Average Consumer Price Index for education in the selected year
                     </span>
                   </label>
                 </div>
@@ -506,17 +531,13 @@ function InternalPage() {
                   <input
                     type="number"
                     name="InflationRatePast"
-                    value={
-                      formData.InflationRatePast ||
-                      latestExternalData.InflationRatePast ||
-                      ""
-                    }
+                    value={formData.InflationRatePast || ""}
                     onChange={handleChange}
                     className="input input-bordered w-full"
                     placeholder={
                       latestExternalData.InflationRatePast
-                        ? `Latest: ${latestExternalData.InflationRatePast}`
-                        : "No updated data available"
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.InflationRatePast}`
+                        : "No data available for selected year"
                     }
                   />
                   <label className="label">
@@ -534,17 +555,13 @@ function InternalPage() {
                   <input
                     type="number"
                     name="AdmissionRate"
-                    value={
-                      formData.AdmissionRate ||
-                      latestExternalData.AdmissionRate ||
-                      ""
-                    }
+                    value={formData.AdmissionRate || ""}
                     onChange={handleChange}
                     className="input input-bordered w-full"
                     placeholder={
                       latestExternalData.AdmissionRate
-                        ? `Latest: ${latestExternalData.AdmissionRate}`
-                        : "No updated data available"
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.AdmissionRate}`
+                        : "No data available for selected year"
                     }
                   />
                   <label className="label">
@@ -562,17 +579,13 @@ function InternalPage() {
                   <input
                     type="number"
                     name="OverallHFCE"
-                    value={
-                      formData.OverallHFCE ||
-                      latestExternalData.OverallHFCE ||
-                      ""
-                    }
+                    value={formData.OverallHFCE || ""}
                     onChange={handleChange}
                     className="input input-bordered w-full"
                     placeholder={
                       latestExternalData.OverallHFCE
-                        ? `Latest: ${latestExternalData.OverallHFCE}`
-                        : "No updated data available"
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.OverallHFCE}`
+                        : "No data available for selected year"
                     }
                   />
                   <label className="label">
@@ -591,17 +604,13 @@ function InternalPage() {
                   <input
                     type="number"
                     name="HFCEEducation"
-                    value={
-                      formData.HFCEEducation ||
-                      latestExternalData.HFCEEducation ||
-                      ""
-                    }
+                    value={formData.HFCEEducation || ""}
                     onChange={handleChange}
                     className="input input-bordered w-full"
                     placeholder={
                       latestExternalData.HFCEEducation
-                        ? `Latest: ${latestExternalData.HFCEEducation}`
-                        : "No updated data available"
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.HFCEEducation}`
+                        : "No data available for selected year"
                     }
                   />
                   <label className="label">
@@ -658,13 +667,13 @@ function InternalPage() {
               </div>
 
               {/* Plot Container */}
-              <div className="plot-container card shadow-md bg-base-100 p-4 ">
-                <h2 className="text-lg font-semibold mb-2 text-primary p-4">
+              <div className="plot-container card shadow-md bg-base-100 border-2 border-accent">
+                <h2 className="text-lg font-semibold mb-1 text-primary px-4 py-3">
                   Plot:
                 </h2>
                 <div
                   id="plot"
-                  className="p-4 bg-base-100 rounded-xl overflow-hidden h-full"
+                  className="p-3 bg-base-100 rounded-xl overflow-hidden h-full"
                 >
                   {/* Plot content goes here */}
                 </div>
