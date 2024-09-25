@@ -408,6 +408,7 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     major_pca = joblib.load('data/major_pca.pkl')
     year_level = user_input["Year_Level"].iloc[0]
 
+    print(user_input, "inputtt")
     columns = joblib.load("data/columns.pkl").get(year_level)
     enrollment_df = clean_data(engine, enrollment_df)
 
@@ -415,7 +416,6 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     major = user_input['Major'].iloc[0]
     start_year = user_input['Start_Year'].iloc[0]
     semester = user_input['Semester'].iloc[0]
-    year_level = user_input['Year_Level'].iloc[0]
 
     # Create a DataFrame from user input
     if user_input is not None:
@@ -484,7 +484,6 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
 
     # Process CPI data
     cpi_df_copy = cpi_df.copy()
-    print("ext", use_external_data)
     cpi_df_copy = cpi_df_copy[cpi_df_copy["Month"] != "Ave"]  # Exclude "Ave" rows
     
     cpi_df_copy = cpi_df_copy.dropna()
@@ -699,8 +698,8 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
     actual_enrollment = pd.read_sql_query(actual_enrollment_query, engine).fillna(0)
     # Split the data into training and prediction sets
     y_major_train = actual_enrollment[
-        (actual_enrollment['Start_Year'] < start_year) | 
-        ((actual_enrollment['Start_Year'] == start_year) & (actual_enrollment['Semester'] < semester))
+        (actual_enrollment['Start_Year'].astype(int) < start_year) | 
+        ((actual_enrollment['Start_Year'].astype(int) == start_year) & (actual_enrollment['Semester'].astype(int) < semester))
     ]['1st_Year'].values
 
     y_major_pred = actual_enrollment[

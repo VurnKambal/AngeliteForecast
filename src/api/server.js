@@ -18,7 +18,6 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
 });
-app.use(limiter);
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -153,14 +152,14 @@ app.get("/api/dashboard-stats", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 app.get(
   "/api/transactions",
   [
     query("department").optional().isString().trim().escape(),
     query("search").optional().isString().trim().escape(),
     query("startYear").optional().isInt(),
-    query("endYear").optional().isInt(),
+    query("startYear_1").optional().isInt(),
+    query("major").optional().isString().trim().escape(),
     query("firstYear").optional().isInt(),
     query("secondYear").optional().isInt(),
     query("thirdYear").optional().isInt(),
@@ -175,7 +174,9 @@ app.get(
         search,
         department,
         startYear,
-        endYear,
+        startYear_1,
+        semester,
+        major,
         firstYear,
         secondYear,
         thirdYear,
@@ -191,62 +192,78 @@ app.get(
       const conditions = [];
       const values = [];
 
-      // Check if department parameter is prese`nt
+      // Check if department parameter is present
       if (department) {
-        
-        conditions.push(`"Department" = $${conditions.length + 1}`);
-        values.push(department);
+        const departments = department.split(",");
+        const departmentConditions = departments.map((_, index) => `"Department" = $${values.length + index + 1}`);
+        conditions.push(`(${departmentConditions.join(" OR ")})`);
+        values.push(...departments);
       }
 
       // Check if search parameter is present
       if (search) {
         conditions.push(
-          `("Major" ILIKE $${conditions.length + 1} OR "Semester" ILIKE $${
-            conditions.length + 1
-          })`
+          `("Major" ILIKE $${values.length + 1} OR "Semester" ILIKE $${values.length + 1})`
         );
         values.push(`%${search}%`);
       }
 
       // Check if startYear parameter is present
       if (startYear) {
-        conditions.push(`"Start_Year" = $${conditions.length + 1}`);
+        conditions.push(`"Start_Year" >= $${values.length + 1}`);
         values.push(parseInt(startYear, 10));
       }
 
       // Check if endYear parameter is present
-      if (endYear) {
-        conditions.push(`"End_Year" = $${conditions.length + 1}`);
-        values.push(parseInt(endYear, 10));
+      if (startYear_1) {
+        conditions.push(`"Start_Year" <= $${values.length + 1}`);
+        values.push(parseInt(startYear_1, 10));
+      }
+
+      // Check if semester parameter is present and is an array
+      if (semester) {
+        const semesters = semester.split(',').map(s => s.trim());
+       console.log(semester)
+        const placeholders = semesters.map((_, index) => `$${values.length + index + 1}`).join(', ');
+        conditions.push(`"Semester" IN (${placeholders})`);
+        values.push(...semesters);
+      }
+
+      // Check if major parameter is present
+      if (major) {
+        const majors = major.split(",");
+        const majorConditions = majors.map((_, index) => `"Major" = $${values.length + index + 1}`);
+        conditions.push(`(${majorConditions.join(" OR ")})`);
+        values.push(...majors);
       }
 
       // Check if firstYear parameter is present
       if (firstYear) {
-        conditions.push(`"1st_Year" = $${conditions.length + 1}`);
+        conditions.push(`"1st_Year" = $${values.length + 1}`);
         values.push(parseInt(firstYear, 10));
       }
 
       // Check if secondYear parameter is present
       if (secondYear) {
-        conditions.push(`"2nd_Year" = $${conditions.length + 1}`);
+        conditions.push(`"2nd_Year" = $${values.length + 1}`);
         values.push(parseInt(secondYear, 10));
       }
 
       // Check if thirdYear parameter is present
       if (thirdYear) {
-        conditions.push(`"3rd_Year" = $${conditions.length + 1}`);
+        conditions.push(`"3rd_Year" = $${values.length + 1}`);
         values.push(parseInt(thirdYear, 10));
       }
 
       // Check if fourthYear parameter is present
       if (fourthYear) {
-        conditions.push(`"4th_Year" = $${conditions.length + 1}`);
+        conditions.push(`"4th_Year" = $${values.length + 1}`);
         values.push(parseInt(fourthYear, 10));
       }
 
       // Check if fifthYear parameter is present
       if (fifthYear) {
-        conditions.push(`"5th_Year" = $${conditions.length + 1}`);
+        conditions.push(`"5th_Year" = $${values.length + 1}`);
         values.push(parseInt(fifthYear, 10));
       }
 
@@ -260,7 +277,6 @@ app.get(
       console.log("With values:", values);
 
       // Execute the query with the conditions
-
       const result = await pool.query(query, values);
       res.json(result.rows);
     } catch (err) {
@@ -269,6 +285,90 @@ app.get(
     }
   }
 );
+
+app.get("/api/transactions/lowest-enrollment-year", async (req, res) => {
+  try {
+    const query = {
+      text: `
+        SELECT MIN("Start_Year") as lowest_year
+        FROM enrollment
+      `,
+    };
+
+    const result = await pool.query(query);
+
+    if (result.rows.length > 0) {
+      res.json({ lowestYear: result.rows[0].lowest_year });
+    } else {
+      res.status(404).json({ error: "No data found" });
+    }
+  } catch (err) {
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.get("/api/transactions/departments", async (req, res) => {
+  try {
+    const query = {
+      text: `SELECT DISTINCT "Department" FROM enrollment
+      WHERE "Department" NOT IN ('GS', 'JHS', 'HAUSPELL', 'HAU', 'MA')
+      ORDER BY "Department" ASC`,
+    };
+    const result = await pool.query(query);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.get("/api/transactions/majors", async (req, res) => {
+  try {
+    const { department } = req.query;
+
+    if (!department) {
+      return res.status(400).json({ error: "Department is required" });
+    }
+
+    const departments = department.split(",");
+    const departmentConditions = departments.map((_, index) => `"Department" = $${index + 1}`);
+    const query = {
+      text: `
+        SELECT DISTINCT "Major", "Department" FROM enrollment WHERE ${departmentConditions.join(" OR ")} ORDER BY "Major" ASC
+      `,
+      values: departments,
+    };
+
+    const result = await pool.query(query);
+    console.log(result, "resulttttt");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.get("/api/transactions/processed-data", async (req, res) => {
+  try {
+    const query = `
+      SELECT *
+      FROM processed_data
+      ORDER BY "Start_Year" DESC, "Department" ASC
+    `;
+    
+    const result = await pool.query(query);
+    
+    if (result.rows.length > 0) {
+      res.json(result.rows);
+    } else {
+      res.status(404).json({ error: "No processed data found" });
+    }
+  } catch (err) {
+    console.error("Error fetching processed data:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 app.post(
   "/api/transactions/update",

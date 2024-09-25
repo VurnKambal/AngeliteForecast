@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import Select from "react-select";
+import Slider from "rc-slider";
+import "rc-slider/assets/index.css";
 import TitleCard from "../../components/Cards/TitleCard";
 import FunnelIcon from "@heroicons/react/24/outline/FunnelIcon";
 import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
@@ -10,6 +13,8 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
     department: "",
     startYear: "",
     endYear: "",
+    startYear_1: "",
+    endYear_1: "",
     firstYear: "",
     secondYear: "",
     thirdYear: "",
@@ -44,6 +49,8 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
     setFilterParams({
       startYear: "",
       endYear: "",
+      startYear_1: "",
+      endYear_1: "",
       semester: "",
       department: "",
       major: "",
@@ -111,7 +118,9 @@ function Transactions() {
   const [filterParams, setFilterParams] = useState({
     startYear: "",
     endYear: "",
-    semester: "",
+    startYear_1: "",
+    endYear_1: "",
+    semester: [],
     department: "",
     major: "",
     firstYear: "",
@@ -121,6 +130,32 @@ function Transactions() {
     fifthYear: "",
   });
   const [search, setSearch] = useState("");
+  const [departments, setDepartments] = useState([]);
+  const [majors, setMajors] = useState([]);
+  const [latestDataYear, setLatestDataYear] = useState(null);
+  const [schoolYearRange, setSchoolYearRange] = useState([2016, new Date().getFullYear()]);
+  const [sliderValue, setSliderValue] = useState(schoolYearRange);
+
+  // Fetch the lowest year and latest year
+  const fetchYearRange = async () => {
+    try {
+      const [lowestYearResponse, latestYearResponse] = await Promise.all([
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/transactions/lowest-enrollment-year`),
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/latest-data-year`)
+      ]);
+
+      const lowestYear = lowestYearResponse.data.lowestYear;
+      const latestYear = latestYearResponse.data.latestYear;
+
+      setSchoolYearRange([parseInt(lowestYear, 10), parseInt(latestYear, 10)]);
+    } catch (error) {
+      console.error("Error fetching year range:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchYearRange();
+  }, []);
 
   // Fetch data with optional filter and search params
   const fetchData = async () => {
@@ -159,12 +194,58 @@ function Transactions() {
     fetchData();
   }, [filterParams, search]);
 
+  // Fetch departments
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_BASE_URL}/api/transactions/departments`
+        );
+        if (response.data && Array.isArray(response.data)) {
+          setDepartments(response.data);
+        } else {
+          console.error("Unexpected department data structure:", response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching departments:", error);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
+
+  // Fetch majors based on department
+  const fetchMajors = async (departments) => {
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_BASE_URL}/api/transactions/majors`,
+        {
+          params: { department: departments.join(",") },
+        }
+      );
+
+      if (response.data && Array.isArray(response.data)) {
+        setMajors(response.data);
+        return response.data;
+      } else {
+        console.error("Unexpected majors data structure:", response.data);
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching majors:", error);
+      return [];
+    }
+  };
+
   // Remove filter and fetch all data
   const removeFilter = () => {
     setFilterParams({
       startYear: "",
       endYear: "",
-      semester: "",
+      startYear_1: "",
+      endYear_1: "",
+      semester: [],
+      major: [],
       firstYear: "",
       secondYear: "",
       department: "",
@@ -186,6 +267,52 @@ function Transactions() {
     setSearch(value);
   };
 
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    fetchData();
+  };
+
+  // Handle department change
+  const handleDepartmentChange = async (selectedOptions) => {
+    const selectedDepartments = selectedOptions.map(option => option.value);
+    
+    // Fetch majors for the selected departments
+    await fetchMajors(selectedDepartments);
+    
+    // Ensure filterParams.major is an array
+    const currentMajors = Array.isArray(filterParams.major) ? filterParams.major : [];
+    console.log("majors:",currentMajors)
+
+    // Filter the current majors to keep only those belonging to the selected departments
+    const updatedMajors = currentMajors.filter(majorName => {
+      console.log(majors[0].Major, "name", majorName)
+      const majorObj = majors.find(m => m.Major === majorName);
+      console.log(majorObj)
+      return majorObj && selectedDepartments.includes(majorObj.Department);
+    });
+    console.log(updatedMajors)
+    setFilterParams(prevData => ({
+      ...prevData,
+      department: selectedDepartments,
+      major: updatedMajors
+    }));
+  };
+
+  // Handle major change
+  const handleMajorChange = (selectedOptions) => {
+    const selectedMajors = selectedOptions.map(option => option.value);
+    setFilterParams(prevData => ({
+      ...prevData,
+      major: selectedMajors
+    }));
+  };
+
+  const semesterOptions = [
+    { value: '1', label: '1st Semester' },
+    { value: '2', label: '2nd Semester' }
+  ];
+
   return (
     <>
       <TitleCard
@@ -199,12 +326,140 @@ function Transactions() {
           />
         }
       >
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text required">Department</span>
+                <button
+                  type="button"
+                  onClick={() => setFilterParams({ ...filterParams, department: "", major: [] })}
+                  className="btn btn-xs btn-ghost ml-2"
+                >
+                  Reset
+                </button>
+              </label>
+              <Select
+                name="department"
+                value={departments.filter(dept => filterParams.department.includes(dept.Department)).map(dept => ({ value: dept.Department, label: dept.Department }))}
+                onChange={handleDepartmentChange}
+                options={departments.map(dept => ({ value: dept.Department, label: dept.Department }))}
+                isMulti
+                className="basic-multi-select"
+                classNamePrefix="select"
+                required
+              />
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text required">Major</span>
+                <button
+                  type="button"
+                  onClick={() => setFilterParams({ ...filterParams, major: [] })}
+                  className="btn btn-xs btn-ghost ml-2"
+                >
+                  Reset
+                </button>
+              </label>
+              <Select
+                name="major"
+                value={(Array.isArray(filterParams.major) ? filterParams.major : []).map(majorName => {
+                  const majorObj = majors.find(m => m.Major === majorName);
+                  return majorObj ? { value: majorObj.Major, label: majorObj.Major } : null;
+                }).filter(Boolean)}
+                onChange={handleMajorChange}
+                options={majors.map(major => ({ value: major.Major, label: major.Major }))}
+                isMulti
+                className="basic-multi-select"
+                classNamePrefix="select"
+                isDisabled={!filterParams.department.length}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text required">School Year</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterParams({
+                      ...filterParams,
+                      startYear: schoolYearRange[0],
+                      endYear: schoolYearRange[0]+1,
+                      startYear_1: schoolYearRange[1],
+                      endYear_1: schoolYearRange[1]+1
+                    })
+                    setSliderValue(schoolYearRange);
+                  }}
+                  className="btn btn-xs btn-ghost ml-2"
+                >
+                  Reset
+                </button>
+              </label>
+              <Slider
+                range
+                min={schoolYearRange[0]}
+                max={schoolYearRange[1]}
+                value={sliderValue}
+                onChange={(value) => setSliderValue(value)}
+                onChangeComplete={(value) => {
+                  console.log(`Start Year: ${value[0]} ${value[1]}`);
+                  setFilterParams({
+                    ...filterParams,
+                    startYear: value[0],
+                    endYear: value[0]+1,
+                    startYear_1: value[1],
+                    endYear_1: value[1]+1
+                  });
+                }}
+                marks={{
+                  [schoolYearRange[0]]: `${schoolYearRange[0]}-${schoolYearRange[0] + 1}`,
+                  [schoolYearRange[1]]: `${schoolYearRange[1]}-${schoolYearRange[1] + 1}`
+                }}
+                step={1}
+                tipFormatter={(value) => `${value}-${value + 1}`}
+              />
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text required">Semester</span>
+                <button
+                  type="button"
+                  onClick={() => setFilterParams({ ...filterParams, semester: [] })}
+                  className="btn btn-xs btn-ghost ml-2"
+                >
+                  Reset
+                </button>
+              </label>
+              <Select
+                name="semester"
+                value={semesterOptions.filter(option => filterParams.semester.includes(option.value))}
+                onChange={(selectedOptions) => {
+                  setFilterParams({
+                    ...filterParams,
+                    semester: selectedOptions.map(option => option.value)
+                  });
+                }}
+                options={semesterOptions}
+                isMulti
+                className="basic-multi-select"
+                classNamePrefix="select"
+                required
+              />
+            </div>
+          </div>
+        </form>
+        <div className="divider pt-8 pb-6"></div>
         <div className="overflow-x-auto w-full">
           <table className="table w-full">
             <thead>
               <tr>
-                <th>Start_Year</th>
-                <th>End_Year</th>
+                <th>School Year</th>
                 <th>Semester</th>
                 <th>Department</th>
                 <th>Major</th>
@@ -227,11 +482,12 @@ function Transactions() {
 
                 return (
                   <tr key={k}>
-                    <td>{l.Start_Year}</td> 
-                    <td>{l.End_Year}</td> 
-                    <td>{l.Semester}</td> 
-                    <td>{l.Department}</td> 
-                    <td>{l.Major}</td> 
+                    <td>
+                      {l.Start_Year}-{l.End_Year}
+                    </td>
+                    <td>{l.Semester}</td>
+                    <td>{l.Department}</td>
+                    <td>{l.Major}</td>
                     <td>{l["1st_Year"] || 0}</td>
                     <td>{l["2nd_Year"] || 0}</td>
                     <td>{l["3rd_Year"] || 0}</td>
