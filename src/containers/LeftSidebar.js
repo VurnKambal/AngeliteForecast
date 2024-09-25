@@ -48,6 +48,7 @@ function LeftSidebar() {
                         isActive ? "font-semibold bg-base-200" : "font-normal"
                       }`
                     }
+                    onClick={close} 
                   >
                     {route.icon} {route.name}
                     {location.pathname === route.path ? (
