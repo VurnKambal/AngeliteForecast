@@ -417,11 +417,25 @@ function Transactions() {
                   });
                 }}
                 marks={{
-                  [schoolYearRange[0]]: `${schoolYearRange[0]}-${schoolYearRange[0] + 1}`,
-                  [schoolYearRange[1]]: `${schoolYearRange[1]}-${schoolYearRange[1] + 1}`
+                  [schoolYearRange[0]]: {
+                    style: { 
+                      whiteSpace: 'nowrap',
+                      transform: 'translateX(0%)',
+                      left: '0%'
+                    },
+                    label: `S.Y. ${schoolYearRange[0]}-${schoolYearRange[0] + 1}`
+                  },
+                  [schoolYearRange[1]]: {
+                    style: { 
+                      whiteSpace: 'nowrap',
+                      transform: 'translateX(-100%)',
+                      left: '100%'
+                    },
+                    label: `S.Y. ${schoolYearRange[1]}-${schoolYearRange[1] + 1}`
+                  }
                 }}
                 step={1}
-                tipFormatter={(value) => `${value}-${value + 1}`}
+                tipFormatter={(value) => `S.Y. ${value}-${value + 1}`}
               />
             </div>
 
