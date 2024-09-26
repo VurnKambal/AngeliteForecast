@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { setPageTitle } from "../../features/common/headerSlice";
-import { CSVLink } from "react-csv";
-
 import axios from "axios";
 import TitleCard from "../../components/Cards/TitleCard";
 
@@ -26,8 +24,6 @@ function InternalPage() {
     HFCEEducation: "",
     InflationRate: "",
   });
-
-  const [csvData, setCsvData] = useState([]);
 
   const [selectedModel, setSelectedModel] = useState("");
   const [movingAverageRange, setMovingAverageRange] = useState(2);
@@ -181,229 +177,113 @@ function InternalPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const department = formData.Department;
-      var year_levels = [];
-      console.log("Department:", department);
-      if (department === "All Departments"){
-        
-        year_levels = ["1st_Year", "2nd_Year", "3rd_Year", "4th_Year"]
-        var processed_data = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/transactions/processed-data`);
-        processed_data = processed_data.data;
-   
-        var modelField = {}
-        var predictionsList = [];
+      const processFactorsResponse = await axios.post(
+        `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data`,
+        formData
+      );
+      if (
+        processFactorsResponse.data.status !== "success" ||
+        !processFactorsResponse.data.processed_data
+      ) {
+        console.error("Error processing data:", processFactorsResponse.data);
+        return;
+      }
 
-        for (const year_level of year_levels){
-            
-            const processFactorsResponse = await axios.post(
-              `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data`,
-              {
-                ...formData,
-                Department: processed_data.find(item => item.Start_Year === formData.Start_Year)?.Department || formData.Department,
-                Major: processed_data.find(item => item.Start_Year === formData.Start_Year)?.Major || formData.Major,
-                Year_Level: year_level
-              }
-            );
-            console.log(processFactorsResponse.data.processed_data ,"factorsssssss")
-            if (
-              processFactorsResponse.data.status !== "success" ||
-              !processFactorsResponse.data.processed_data
-            ) {
-              console.error("Error processing data:", processFactorsResponse.data);
-              return;
-            }
-            const processedFactors = JSON.parse(
-              processFactorsResponse.data.processed_data
-            );
-            console.log(processedFactors, "factorsss")
+      const processedFactors = JSON.parse(
+        processFactorsResponse.data.processed_data
+      );
+      const cleanedProcessedFactors = processedFactors.map((item) =>
+        Object.fromEntries(
+          Object.entries(item).map(([key, value]) => [
+            key,
+            value === null ? 0 : value,
+          ])
+        )
+      );
 
-            const cleanedProcessedFactors = processedFactors.map((item) =>
-              Object.fromEntries(
-                Object.entries(item).map(([key, value]) => [
-                  key,
-                  value === null ? 0 : value,
-                ])
-              )
-            );
-      
-            modelField = {
-              model: selectedModel,
-              major: formData.Major,
-              department: formData.Department,
-              year_level: year_level,
-              start_year: formData.Start_Year,
-              semester: formData.Semester,
-            };
-      
-            const predictPayload = {
-              ...modelField,
-              processed_factors: cleanedProcessedFactors,
-              use_external_data: formData.UseExternalData,
-              admission_rate: formData.AdmissionRate,
-              cpi_education: formData.CPIEducation,
-              overall_hfce: formData.OverallHFCE,
-              hfce_education: formData.HFCEEducation,
-              inflation_rate_past: formData.InflationRatePast,
-              window_size:
-                selectedModel === "Moving_Average" ? movingAverageRange : null,
-            };
-      
-            try {
-              var predictionResult = await axios.post(
-                `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`,
-                predictPayload
-              );
-              const predictions = JSON.parse(predictionResult.data);
-            
-              predictionsList = predictionsList.concat(predictions);
+      const modelField = {
+        model: selectedModel,
+        major: formData.Major,
+        year_level: formData.Year_Level,
+        start_year: formData.Start_Year,
+        semester: formData.Semester,
+      };
 
-              var lastPrediction = predictions[predictions.length - 1];
-              console.log("Last prediction:", lastPrediction.Previous_Semester);
-              lastPrediction = {
-                ...lastPrediction,
-                Prediction: Math.round(lastPrediction.Prediction),
-                Previous_Semester: Math.round(lastPrediction.Previous_Semester),
-              };
-              setPredictionResult(lastPrediction);
-      
-              console.log(year_level, predictions);  
-            } catch (error) {
-              console.error("Error submitting form:", error);
-              document.getElementById("Prediction").innerHTML =
-                "Error submitting form";
-            } finally {
-                    
-              // Prepare CSV data
-              const csvData = [
-                ["Model", "Major", "Year Level", "Start Year", "Semester", "Previous Semester", "Prediction"],
-                ...predictionsList.map(pred => [
-                  formData.Model,
-                  pred.Major,
-                  pred.Year_Level,
-                  pred.Start_Year,
-                  pred.Semester,
-                  Math.round(pred.Previous_Semester),
-                  Math.round(pred.Prediction)
-                ])
-              ];
-              
-              setCsvData(csvData);
-            }
-        }
-        
-      } else {
-        
+      const predictPayload = {
+        ...modelField,
+        processed_factors: cleanedProcessedFactors,
+        use_external_data: formData.UseExternalData,
+        admission_rate: formData.AdmissionRate,
+        cpi_education: formData.CPIEducation,
+        overall_hfce: formData.OverallHFCE,
+        hfce_education: formData.HFCEEducation,
+        inflation_rate_past: formData.InflationRatePast,
+        window_size:
+          selectedModel === "Moving_Average" ? movingAverageRange : null,
+      };
 
-        const processFactorsResponse = await axios.post(
-          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data`,
-          formData
+      try {
+        var predictionResult = await axios.post(
+          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`,
+          predictPayload
         );
-        if (
-          processFactorsResponse.data.status !== "success" ||
-          !processFactorsResponse.data.processed_data
-        ) {
-          console.error("Error processing data:", processFactorsResponse.data);
-          return;
-        }
-
-        const processedFactors = JSON.parse(
-          processFactorsResponse.data.processed_data
-        );
-        const cleanedProcessedFactors = processedFactors.map((item) =>
-          Object.fromEntries(
-            Object.entries(item).map(([key, value]) => [
-              key,
-              value === null ? 0 : value,
-            ])
-          )
-        );
-
-        const modelField = {
-          model: selectedModel,
-          major: formData.Major,
-          year_level: formData.Year_Level,
-          start_year: formData.Start_Year,
-          semester: formData.Semester,
+        const predictionsList = JSON.parse(predictionResult.data);
+        var lastPrediction = predictionsList[predictionsList.length - 1];
+        console.log("Last prediction:", lastPrediction.Previous_Semester);
+        lastPrediction = {
+          ...lastPrediction,
+          Prediction: Math.round(lastPrediction.Prediction),
+          Previous_Semester: Math.round(lastPrediction.Previous_Semester),
         };
+        setPredictionResult(lastPrediction);
 
-        const predictPayload = {
-          ...modelField,
-          processed_factors: cleanedProcessedFactors,
-          use_external_data: formData.UseExternalData,
-          admission_rate: formData.AdmissionRate,
-          cpi_education: formData.CPIEducation,
-          overall_hfce: formData.OverallHFCE,
-          hfce_education: formData.HFCEEducation,
-          inflation_rate_past: formData.InflationRatePast,
-          window_size:
-            selectedModel === "Moving_Average" ? movingAverageRange : null,
-        };
+        console.log(lastPrediction);
+      } catch (error) {
+        console.error("Error submitting form:", error);
+        document.getElementById("Prediction").innerHTML =
+          "Error submitting form";
+      }
 
-        try {
-          var predictionResult = await axios.post(
-            `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`,
-            predictPayload
-          );
-          const predictionsList = JSON.parse(predictionResult.data);
-          var lastPrediction = predictionsList[predictionsList.length - 1];
-          console.log("Last prediction:", lastPrediction.Previous_Semester);
-          lastPrediction = {
-            ...lastPrediction,
-            Prediction: Math.round(lastPrediction.Prediction),
-            Previous_Semester: Math.round(lastPrediction.Previous_Semester),
-          };
-          setPredictionResult(lastPrediction);
+      try {
+        console.log("aaa", predictionResult);
+        const plotResponse = await axios.post(
+          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`,
+          {
+            ...predictionResult.data,
+            ...modelField,
+          },
+          {
+            responseType: "blob", // Important for getting binary data
+          }
+        );
+        console.log("Plot Response:", plotResponse.data);
 
-          console.log(lastPrediction);
-            
-          try {
-            console.log("aaa", predictionResult);
-            const plotResponse = await axios.post(
-              `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`,
-              {
-                ...predictionResult.data,
-                ...modelField,
-              },
-              {
-                responseType: "blob", // Important for getting binary data
-              }
-            );
-            
-            console.log("Plot Response:", plotResponse.data);
+        // Create a URL for the blob
+        const plotBlob = new Blob([plotResponse.data], { type: "image/png" });
+        const plotUrl = URL.createObjectURL(plotBlob);
 
-            // Create a URL for the blob
-            const plotBlob = new Blob([plotResponse.data], { type: "image/png" });
-            const plotUrl = URL.createObjectURL(plotBlob);
+        // Create an image element and set the src to the blob URL
+        const plotImage = new Image();
+        plotImage.src = plotUrl;
+        plotImage.alt = `Enrollment trend for ${formData.Major}`;
+        plotImage.hidden = false;
 
-            // Create an image element and set the src to the blob URL
-            const plotImage = new Image();
-            plotImage.src = plotUrl;
-            plotImage.alt = `Enrollment trend for ${formData.Major}`;
-            plotImage.hidden = false;
-
-          // Append the image to the plot div
-            const plotDiv = document.getElementById("plot");
-            plotDiv.innerHTML = ""; // Clear any existing content
-            plotDiv.appendChild(plotImage);
-        } catch (error) {
-          console.error(
-            `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot Error submitting form:`,
-            error
-          );
-          document.getElementById("plot").innerHTML = "Error submitting form";
-        }
-        } catch (error) {
-          console.error("Error submitting form:", error);
-          document.getElementById("Prediction").innerHTML =
-            "Error submitting form";
-        }
-     
-    } 
-  } catch (error) {
-    console.error("Error submitting form:", error);
-    document.getElementById("Prediction").innerHTML = "Error submitting form";
-  }
-}
+        // Append the image to the plot div
+        const plotDiv = document.getElementById("plot");
+        plotDiv.innerHTML = ""; // Clear any existing content
+        plotDiv.appendChild(plotImage);
+      } catch (error) {
+        console.error(
+          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot Error submitting form:`,
+          error
+        );
+        document.getElementById("plot").innerHTML = "Error submitting form";
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      document.getElementById("Prediction").innerHTML = "Error submitting form";
+    }
+  };
 
   // Generate school year options
   const currentYear = new Date().getFullYear();
@@ -421,39 +301,6 @@ function InternalPage() {
     const timeSeriesModels = ["Moving_Average", "Simple_Exponential_Smoothing"];
     return timeSeriesModels.includes(model);
   };
-
-  // Find the latest year from schoolYearOptions
-  const latestYear = schoolYearOptions.length > 0 
-    ? schoolYearOptions[schoolYearOptions.length - 1].split("-")[0] 
-    : "";
-
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
-
-  // Determine the latest possible semester
-  const getLatestPossibleSemester = (selectedYear) => {
-    const selectedYearInt = parseInt(selectedYear);
-    const currentYear = currentDate.getFullYear();
-
-    if (selectedYearInt < currentYear) {
-      return "2"; // Both semesters available for past years
-    } else if (selectedYearInt === currentYear) {
-      return currentMonth >= 8 ? "2" : "1"; // 2nd semester if it's August or later
-    } else {
-      return "1"; // Only 1st semester available for future years
-    }
-  };
-
-  // Use useEffect to set default values when the component mounts
-  useEffect(() => {
-    if (latestYear) {
-      const latestSemester = getLatestPossibleSemester(latestYear);
-      handleChange({ target: { name: 'Start_Year', value: latestYear } });
-      handleChange({ target: { name: 'Semester', value: latestSemester } });
-    }
-  }, []); // Empty dependency array ensures this runs only once on mount
-
-  const latestPossibleSemester = getLatestPossibleSemester(formData.Start_Year);
 
   return (
     <>
@@ -483,9 +330,6 @@ function InternalPage() {
                   <option value="" disabled>
                     Select Department
                   </option>
-                  <option value="All Departments">
-                    All Departments
-                  </option>
                   {departments.map((dept) => (
                     <option key={dept.Department} value={dept.Department}>
                       {dept.Department}
@@ -503,7 +347,7 @@ function InternalPage() {
                   value={formData.Major}
                   onChange={handleChange}
                   className="select select-bordered w-full"
-                  disabled={!formData.Department || formData.Department === "All Departments"}
+                  disabled={!formData.Department}
                   required
                 >
                   <option value="" disabled>
@@ -550,7 +394,6 @@ function InternalPage() {
                   value={formData.Year_Level}
                   onChange={handleChange}
                   className="select select-bordered w-full"
-                  disabled={!formData.Department || formData.Department === "All Departments"}
                   required
                 >
                   <option value="" disabled>
@@ -582,7 +425,7 @@ function InternalPage() {
                     Select Semester
                   </option>
                   <option value="1">1st Semester</option>
-                  <option value="2" disabled={latestPossibleSemester === "1"}>2nd Semester</option>
+                  <option value="2">2nd Semester</option>
                 </select>
               </div>
               <div className="form-control">
@@ -620,25 +463,163 @@ function InternalPage() {
               </div>
             </div>
 
-
-            <div className="grid pt-4">
-              <button type="submit" className="btn btn-primary">
-                Submit
-              </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div></div>
+              {/* Moving Average Range Selection */}
+              {selectedModel === "Moving_Average" && (
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text required">
+                      Number of Semesters for Moving Average
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    value={movingAverageRange}
+                    onChange={handleMovingAverageRangeChange}
+                    className="input input-bordered w-full"
+                    min="2"
+                    max="10"
+                    required
+                  />
+                </div>
+              )}
             </div>
-                        
-            {/* Add CSV download link */}
-            {csvData.length > 0 && (
-              <CSVLink 
-                data={csvData} 
-                filename={"predictions.csv"}
-                className="btn btn-primary mt-4"
-                target="_blank"
-              >
-                Download Predictions CSV
-              </CSVLink>
+
+            {/* External Factors Inputs */}
+            {formData.UseExternalData && !isTimeSeriesModel(selectedModel) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">
+                      CPI Education (Mean Current Year)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    name="CPIEducation"
+                    value={formData.CPIEducation || ""}
+                    onChange={handleChange}
+                    className="input input-bordered w-full"
+                    placeholder={
+                      latestExternalData.CPIEducation
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.CPIEducation}`
+                        : "No data available for selected year"
+                    }
+                  />
+                  <label className="label">
+                    <span className="label-text-alt">
+                      Average Consumer Price Index for education in the selected
+                      year
+                    </span>
+                  </label>
+                </div>
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">
+                      Inflation Rate (Previous Year)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    name="InflationRatePast"
+                    value={formData.InflationRatePast || ""}
+                    onChange={handleChange}
+                    className="input input-bordered w-full"
+                    placeholder={
+                      latestExternalData.InflationRatePast
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.InflationRatePast}`
+                        : "No data available for selected year"
+                    }
+                  />
+                  <label className="label">
+                    <span className="label-text-alt">
+                      Inflation rate from the previous year
+                    </span>
+                  </label>
+                </div>
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">
+                      Admission Rate (Current Year)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    name="AdmissionRate"
+                    value={formData.AdmissionRate || ""}
+                    onChange={handleChange}
+                    className="input input-bordered w-full"
+                    placeholder={
+                      latestExternalData.AdmissionRate
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.AdmissionRate}`
+                        : "No data available for selected year"
+                    }
+                  />
+                  <label className="label">
+                    <span className="label-text-alt">
+                      Current year's admission rate
+                    </span>
+                  </label>
+                </div>
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">
+                      Overall HFCE (Mean Current Year)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    name="OverallHFCE"
+                    value={formData.OverallHFCE || ""}
+                    onChange={handleChange}
+                    className="input input-bordered w-full"
+                    placeholder={
+                      latestExternalData.OverallHFCE
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.OverallHFCE}`
+                        : "No data available for selected year"
+                    }
+                  />
+                  <label className="label">
+                    <span className="label-text-alt">
+                      Average overall Household Final Consumption Expenditure
+                      for the current year
+                    </span>
+                  </label>
+                </div>
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">
+                      HFCE Education (Mean Current Year)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    name="HFCEEducation"
+                    value={formData.HFCEEducation || ""}
+                    onChange={handleChange}
+                    className="input input-bordered w-full"
+                    placeholder={
+                      latestExternalData.HFCEEducation
+                        ? `Latest for ${formData.Start_Year}: ${latestExternalData.HFCEEducation}`
+                        : "No data available for selected year"
+                    }
+                  />
+                  <label className="label">
+                    <span className="label-text-alt">
+                      Average Household Final Consumption Expenditure on
+                      education for the current year
+                    </span>
+                  </label>
+                </div>
+              </div>
             )}
-            <div className="divider pb-2"></div>
+
+            <button type="submit" className="btn btn-primary">
+              Submit
+            </button>
+
+            <div className="divider"></div>
 
             <div className="grid grid-cols-1 md:grid-cols-[25%,75%] gap-4">
               {/* Prediction Container */}

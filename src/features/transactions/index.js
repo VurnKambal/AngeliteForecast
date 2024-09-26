@@ -322,12 +322,7 @@ function Transactions() {
       <TitleCard
         title="Past Enrollment Datasets [S.Y. 2016-2023]"
         topMargin="mt-2"
-        TopSideButtons={
-          <TopSideButtons
-            applyFilter={applyFilter}
-            removeFilter={removeFilter}
-          />
-        }
+        
       >
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

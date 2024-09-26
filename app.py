@@ -126,17 +126,14 @@ def predict():
     processed_factors = data['processed_factors']
     df = pd.DataFrame(processed_factors)
    
-    print(processed_factors, "processedddd")
-    selectedModel = data["model"]
+    
+    selectedModel = data['model']
     start_year = data["start_year"]
     semester = data["semester"]
     year_level = data["year_level"]
     window_size = data["window_size"]
-
-    all_departments = True if data["department"] == "All Departments" else False
-
     prediction = make_predictions(ENGINE, selectedModel, models, df, start_year, semester,
-                                  year_level, window_size=window_size, all_departments=all_departments)
+                                  year_level, window_size=window_size)
     print("prediction", prediction)
     return jsonify(prediction.to_json(orient='records')), 200
 
@@ -146,14 +143,11 @@ def process_data(train=False):
     global models, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df
 
     data = request.get_json()
-    print(data, "dataaa")
-    
-    all_departments = True if data["Department"] == "All Departments" else False
-
     user_input = pd.DataFrame([data])
     numerical_features = ["Start_Year", "Semester"]
     user_input[numerical_features] = user_input[numerical_features].astype(int)
     use_external_data = data.get("UseExternalData")
+    print(data, "dataaaaaaaaaaa", use_external_data)
     # Ensure the data has been queried
     if enrollment_df is None:
         query_data(ENGINE)  # Assuming ENGINE is your database connection
@@ -177,13 +171,13 @@ def process_data(train=False):
 
     if train:
         # Process the data here using the global DataFrames
-        processed_data = preprocess_data(ENGINE, None, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, use_external_data=use_external_data, external_data=external_data, all_departments=all_departments)
+        processed_data = preprocess_data(ENGINE, None, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, use_external_data=use_external_data, external_data=external_data)
         print("processed_data", processed_data)
         models = train_models(processed_data)
     else:
         if len(models) == 0:
             models = initialize_models()
-    processed_data = preprocess_data(ENGINE, user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, use_external_data=use_external_data, external_data=external_data, all_departments=all_departments)
+    processed_data = preprocess_data(ENGINE, user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, use_external_data=use_external_data, external_data=external_data)
     
     processed_data.to_csv("b.csv")
     response = {

@@ -30,7 +30,9 @@ function Login() {
         localStorage.setItem("token", response.data.token);
         window.location.href = '/app/welcome';
       } catch (error) {
+        console.log(error);
         setErrorMessage("Invalid credentials. Please try again.");
+
       } finally {
         setLoading(false);
       }
