@@ -37,6 +37,9 @@ function InternalPage() {
     Attrition_Rate: null,
   });
 
+  const [latestSchoolYear, setLatestSchoolYear] = useState(null);
+  const [latestSemester, setLatestSemester] = useState(null);
+
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
@@ -73,6 +76,32 @@ function InternalPage() {
 
   useEffect(() => {
     fetchLatestDataYear();
+
+    // Add this new fetch
+    const fetchLatestSchoolYearAndSemester = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_BASE_URL}/api/latest-school-year-semester`
+        );
+
+        console.log(response.data);
+        if (response.data) {
+          setLatestSchoolYear(response.data.latestYear);
+          setLatestSemester(response.data.latestSemester);
+          
+          // Set default values
+          setFormData(prevData => ({
+            ...prevData,
+            Start_Year: response.data.latestYear,
+            Semester: response.data.latestSemester === '1' ? '2' : '1'
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching latest school year and semester:", error);
+      }
+    };
+
+    fetchLatestSchoolYearAndSemester();
   }, []);
 
   const fetchLatestExternalData = async (schoolYear, department) => {
@@ -285,15 +314,12 @@ function InternalPage() {
     }
   };
 
-  // Generate school year options
-  const currentYear = new Date().getFullYear();
+  // Modify the school year options generation
   const schoolYearOptions = [];
-  if (latestDataYear >= currentYear) {
-    for (let year = 2019; year <= latestDataYear; year++) {
+  if (latestSchoolYear) {
+    for (let year = 2019; year <= parseInt(latestSchoolYear); year++) {
       schoolYearOptions.push(`${year}-${year + 1}`);
     }
-  } else {
-    console.log("Loading...");
   }
 
   const isTimeSeriesModel = (model) => {
@@ -401,8 +427,8 @@ function InternalPage() {
                   <option value="" disabled>
                     Select Semester
                   </option>
-                  <option value="1">1st Semester</option>
-                  <option value="2">2nd Semester</option>
+                  <option value="1" selected={latestSemester === '1'}>1st Semester</option>
+                  <option value="2" selected={latestSemester === '2'}>2nd Semester</option>
                 </select>
               </div>
             </div>

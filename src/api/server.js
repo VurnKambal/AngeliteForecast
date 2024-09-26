@@ -746,6 +746,33 @@ app.post(
   }
 );
 
+// Add this new endpoint near your other API routes
+app.get("/api/latest-school-year-semester", async (req, res) => {
+  try {
+    const query = `
+      SELECT "Start_Year", "Semester"
+      FROM enrollment
+      ORDER BY "Start_Year" DESC, "Semester" DESC
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query);
+
+    if (result.rows.length > 0) {
+      const { Start_Year, Semester } = result.rows[0];
+      res.json({
+        latestYear: Start_Year,
+        latestSemester: Semester
+      });
+    } else {
+      res.status(404).json({ error: "No data found" });
+    }
+  } catch (err) {
+    console.error("Error fetching latest school year and semester:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.listen(process.env.PORT || 5000, () => {
   console.log(`Server is running on port ${process.env.PORT || 5000}`);
 });
