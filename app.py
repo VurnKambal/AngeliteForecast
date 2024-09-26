@@ -179,7 +179,6 @@ def process_data(train=False):
             models = initialize_models()
     processed_data = preprocess_data(ENGINE, user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, use_external_data=use_external_data, external_data=external_data)
     
-    processed_data.to_csv("b.csv")
     response = {
         'status': 'success',
         'message': 'Data processed successfully',

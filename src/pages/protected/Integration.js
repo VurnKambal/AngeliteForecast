@@ -385,6 +385,30 @@ function InternalPage() {
                   ))}
                 </select>
               </div>
+              
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text required">Semester</span>
+                </label>
+                <select
+                  name="Semester"
+                  value={formData.Semester}
+                  onChange={handleChange}
+                  className="select select-bordered w-full"
+                  disabled={!formData.Start_Year}
+                  required
+                >
+                  <option value="" disabled>
+                    Select Semester
+                  </option>
+                  <option value="1">1st Semester</option>
+                  <option value="2">2nd Semester</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Semester and Model Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-control">
                 <label className="label">
                   <span className="label-text required">Year Level</span>
@@ -403,29 +427,6 @@ function InternalPage() {
                   <option value="2nd_Year">2nd Year</option>
                   <option value="3rd_Year">3rd Year</option>
                   <option value="4th_Year">4th Year</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Semester and Model Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text required">Semester</span>
-                </label>
-                <select
-                  name="Semester"
-                  value={formData.Semester}
-                  onChange={handleChange}
-                  className="select select-bordered w-full"
-                  disabled={!formData.Start_Year}
-                  required
-                >
-                  <option value="" disabled>
-                    Select Semester
-                  </option>
-                  <option value="1">1st Semester</option>
-                  <option value="2">2nd Semester</option>
                 </select>
               </div>
               <div className="form-control">
