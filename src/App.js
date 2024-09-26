@@ -4,6 +4,18 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import { themeChange } from 'theme-change'
 import checkAuth from './app/auth';
 import initializeApp from './app/init';
+import { useSelector } from 'react-redux';
+
+// Create a wrapper component for unauthenticated routes
+const UnauthenticatedRoute = ({ children }) => {
+  const authStatus = useSelector(state => state.auth.userLoggedIn);
+  
+  if (authStatus) {
+    return <Navigate to="/app/welcome" replace />;
+  }
+  
+  return children;
+};
 
 // Importing pages
 const Layout = lazy(() => import('./containers/Layout'))
@@ -22,10 +34,11 @@ const token = checkAuth()
 
 
 function App() {
-
   useEffect(() => {
-    // 👆 daisy UI themes initialization
-    themeChange(false)
+    // Set initial theme to mytheme
+    localStorage.setItem('theme', 'mytheme');
+    // Initialize daisy UI themes
+    themeChange(false);
   }, [])
 
 
@@ -33,10 +46,21 @@ function App() {
     <>
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/documentation" element={<Documentation />} />
+          <Route path="/login" element={
+            <UnauthenticatedRoute>
+              <Login />
+            </UnauthenticatedRoute>
+          } />
+          <Route path="/forgot-password" element={
+            <UnauthenticatedRoute>
+              <ForgotPassword />
+            </UnauthenticatedRoute>
+          } />
+          <Route path="/register" element={
+            <UnauthenticatedRoute>
+              <Register />
+            </UnauthenticatedRoute>
+          } />
           
           {/* Place new routes over this */}
           <Route path="/app/*" element={<Layout />} />

@@ -343,7 +343,7 @@ def process_shs_data(df):
     shs_df = shs_df.fillna(0)
     shs_df = shs_df.rename(columns={col: f"{col}_lag_1" for col in shs_df.columns.drop(["Start_Year", "Semester"])})
 
-    df = df[~df['Department'].isin(['GS', 'JHS', 'SHS', 'HAUSPELL'])]
+    df = df[~df['Department'].isin(['GS', 'JHS', 'SHS', 'MA', 'HAUSPELL'])]
     df = df[~df['Major'].isin(['TOTAL', 'GRAND TOTAL'])]
 
     grade_columns = [col for col in df.columns if col.startswith("Grade_")]
@@ -401,14 +401,14 @@ def create_features_by_year_level(df, year_level):
     return df
 
 
-def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, use_external_data=False, external_data=None, train=False):
+def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df, use_external_data=False, external_data=None, train=False, all_departments=False):
     dept_encoder = joblib.load('data/dept_encoder.pkl')
     major_encoder = joblib.load('data/major_encoder.pkl')
     dept_pca = joblib.load('data/dept_pca.pkl')
     major_pca = joblib.load('data/major_pca.pkl')
     year_level = user_input["Year_Level"].iloc[0]
 
-    print(user_input, "inputtt")
+
     columns = joblib.load("data/columns.pkl").get(year_level)
     enrollment_df = clean_data(engine, enrollment_df)
 
@@ -438,7 +438,9 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
         new_row_enrollment = latest_year_data.copy()
         new_row_enrollment['Start_Year'] = new_year
         new_row_enrollment['Semester'] = new_semester
-        new_row_enrollment['Department'] = enrollment_df[enrollment_df['Major'] == user_input['Major'].iloc[0]]['Department'].iloc[0]
+        if not all_departments:
+           
+            new_row_enrollment['Department'] = enrollment_df[enrollment_df['Major'] == user_input['Major'].iloc[0]]['Department'].iloc[0]
             
         new_row_enrollment.loc[:, "1st_Year":] = 0
 
@@ -449,13 +451,6 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
         new_row_cpi.loc[new_row_cpi.index != 'Year'] = 0
         cpi_df = pd.concat([cpi_df, new_row_cpi.to_frame().T], ignore_index=True)
 
-       
-        # Add a row with null values for admission data
-        new_row_admission = admission_df.iloc[-1].copy()
-        new_row_admission['Start_Year'] = new_year
-        new_row_admission['Department'] = user_input['Major'].iloc[0]
-        new_row_admission.loc[new_row_admission.index.difference(['Start_Year', 'Department'])] = 0
-        admission_df = pd.concat([admission_df, new_row_admission.to_frame().T], ignore_index=True)
 
         # Add a row with null values for HFCE data
         new_row_hfce = hfce_df.iloc[-1].copy()
@@ -471,15 +466,18 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     X_pred["Start_Month"] = X_pred["Semester"].apply(determine_start_month)
     
     # Process admission data
-    
+
     if use_external_data and 'AdmissionRate' in external_data:
-        admission_df.loc[admission_df['Start_Year'] == start_year, 'Number_of_Applicants'] = external_data['AdmissionRate']
+        admission_df.loc[(admission_df['Start_Year'] == start_year) & (admission_df['Department'] == user_input['Department'].iloc[0]), 'Number_of_Applicants'] = float(external_data['AdmissionRate'])
+    
     admission_df = admission_df.drop(columns=["Number_of_Processed_Applicants", "Number_of_Enrolled_Applicants"])
 
     admission_df = admission_df.sort_values(by=['Start_Year']).reset_index(drop=True)
+
     admission_df = create_lag_features(admission_df, group=["Department"], target="Number_of_Applicants", lag_steps=1)
     admission_df = create_rolling_std(admission_df, group=["Department"], target="Number_of_Applicants", window_size=3, min_periods=1, lag_steps=0)
     admission_df = admission_df.fillna(0)
+
 
 
     # Process CPI data
@@ -489,26 +487,26 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     cpi_df_copy = cpi_df_copy.dropna()
     cpi_df_copy[["Year"]] = cpi_df_copy[["Year"]].astype(int)
     cpi_df_copy = cpi_df_copy.groupby("Year")["CPI_Region3"].mean().reset_index()
-    print(use_external_data , "sssss", 'CPIEducation' in external_data)
+
     if use_external_data and 'CPIEducation' in external_data:
         cpi_df_copy.loc[cpi_df_copy['Year'] == start_year, 'CPI_Region3'] = external_data['CPIEducation']
-        print(cpi_df_copy, "cpiiii", external_data['CPIEducation'])
 
     cpi_df_copy = create_rolling_std(cpi_df_copy, group=None, target="CPI_Region3", window_size=6, lag_steps=0)
-    print(cpi_df_copy, "cccccc")
     # Process inflation data
     inflation_df_copy = inflation_df[["Start_Year", "Inflation_Rate"]].copy()
     inflation_df_copy = inflation_df_copy.dropna()
 
     inflation_next_year = None
     if use_external_data and 'InflationRatePast' in external_data:
-        inflation_df_copy.loc[inflation_df_copy['Start_Year'] == start_year, 'Inflation_Rate'] = external_data['InflationRatePast']
-    else:
-        latest_year = inflation_df_copy["Start_Year"].max()
-        next_year = latest_year + 1
-        inflation_next_year = inflation_df_copy[inflation_df_copy["Start_Year"] == latest_year].copy()
-        inflation_next_year["Start_Year"] = next_year
-        inflation_next_year["Inflation_Rate"] = float('nan')
+        inflation_df_copy.loc[inflation_df_copy['Start_Year'] == start_year-1, 'Inflation_Rate'] = external_data['InflationRatePast']
+   
+
+    latest_year = inflation_df_copy["Start_Year"].max()
+    next_year = latest_year + 1
+    inflation_next_year = inflation_df_copy[inflation_df_copy["Start_Year"] == latest_year].copy()
+    inflation_next_year["Start_Year"] = next_year
+    inflation_next_year["Inflation_Rate"] = float('nan')
+    
     inflation_df_copy = pd.concat([inflation_df_copy, inflation_next_year], ignore_index=True)
     inflation_df_copy = inflation_df_copy.sort_values(by=['Start_Year']).reset_index(drop=True)
     inflation_df_copy = inflation_df_copy[inflation_df_copy["Start_Year"] <= 2024]
@@ -543,6 +541,7 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
         X_pred = X_pred.merge(admission_df, on=["Department", "Start_Year"], how="left")
         X_pred = X_pred.drop(columns=["Number_of_Applicants"])
 
+
     X_pred = X_pred.merge(hfce_df, on=["Start_Year"], how="left")
     enrollment_df = enrollment_df.drop_duplicates()
     
@@ -562,8 +561,9 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
 
     # Step 4: Calculate the percentage distribution of each major
     distribution_df['Percentage_Distribution_lag_1'] = (distribution_df['Previous_Semester'] / distribution_df['Total_Previous_Semester_Students_lag_1']) * 100
+    if all_departments:    
+        distribution_df = distribution_df.query(f"Major == '{major}'")
     
-    distribution_df = distribution_df.query(f"Major == '{major}'")
     X_pred = X_pred.merge(enrollment_df, on=["Major", "Department", "Start_Year", "Semester"], how="left")
     X_pred = X_pred.merge(distribution_df.drop(columns=["Previous_Semester"]), on=['Start_Year', 'Semester', 'Major'])
 
@@ -596,7 +596,6 @@ def preprocess_data(engine, user_input, enrollment_df, cpi_df, inflation_df, adm
     # Ensure all columns in X_pred are in the correct order
     X_pred = X_pred[columns].fillna(0)
     X_pred.to_sql("model_data", engine, if_exists="replace", index=False)
-    print(X_pred.columns,"ssadad")
     return X_pred
 
 # Helper functions (create_rolling_std, create_lag_features) should be defined here
@@ -663,7 +662,7 @@ def train_models(engine, data, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, en
     return models
 
 # Function to make predictions
-def make_predictions(engine, selectedModel, models, data, start_year, semester, year_level, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, window_size=None):
+def make_predictions(engine, selectedModel, models, data, start_year, semester, year_level, weight_ses=0.2, weight_rf=0.4, weight_xgb=0.1, window_size=None, all_departments=False):
     """
     engine: SQLAlchemy engine object
     selectedModel: selected model for prediction
@@ -678,8 +677,13 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
     major = data['Major'][0]
     start_year = int(start_year)
     semester = int(semester)
-    major_data = data[data['Major'] == major]
+    if all_departments:
+        major_data = data[data['Major'] == major]
+    else:
+        major_data = data.copy()
     predictions = {}
+
+    major_data.to_csv("major_data.csv", index=False)
     X_major = major_data.reset_index(drop=True)
     X_major["Major"] = X_major["Major"].astype("category")
 
@@ -736,6 +740,7 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
         case "xgboost":     
             xgb_model = models["xgb"].get(year_level)
             X_major_pred.to_sql("model_major", engine, if_exists="replace", index=False)
+            print(X_major, "majorrr")
             dtrain = xgb.DMatrix(X_major_train, enable_categorical=True)
             dpred = xgb.DMatrix(X_major_pred, enable_categorical=True)
             try:
@@ -918,7 +923,7 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
     
     # Return the last prediction, previous semester, and attrition rate
     last_prediction = predictions_df.iloc[-1]
-    print(predictions_df)
+
     return predictions_df[["Prediction", "Previous_Semester", "Attrition_Rate"]]
 
     

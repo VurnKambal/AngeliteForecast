@@ -160,11 +160,6 @@ app.get(
     query("startYear").optional().isInt(),
     query("startYear_1").optional().isInt(),
     query("major").optional().isString().trim().escape(),
-    query("firstYear").optional().isInt(),
-    query("secondYear").optional().isInt(),
-    query("thirdYear").optional().isInt(),
-    query("fourthYear").optional().isInt(),
-    query("fifthYear").optional().isInt(),
   ],
   validate,
   async (req, res) => {
@@ -177,11 +172,6 @@ app.get(
         startYear_1,
         semester,
         major,
-        firstYear,
-        secondYear,
-        thirdYear,
-        fourthYear,
-        fifthYear,
       } = req.query;
 
       // Start with the base query
@@ -192,7 +182,7 @@ app.get(
       const conditions = [];
       const values = [];
 
-      // Check if department parameter is present
+      // // Check if department parameter is present
       if (department) {
         const departments = department.split(",");
         const departmentConditions = departments.map((_, index) => `"Department" = $${values.length + index + 1}`);
@@ -200,13 +190,6 @@ app.get(
         values.push(...departments);
       }
 
-      // Check if search parameter is present
-      if (search) {
-        conditions.push(
-          `("Major" ILIKE $${values.length + 1} OR "Semester" ILIKE $${values.length + 1})`
-        );
-        values.push(`%${search}%`);
-      }
 
       // Check if startYear parameter is present
       if (startYear) {
@@ -235,36 +218,6 @@ app.get(
         const majorConditions = majors.map((_, index) => `"Major" = $${values.length + index + 1}`);
         conditions.push(`(${majorConditions.join(" OR ")})`);
         values.push(...majors);
-      }
-
-      // Check if firstYear parameter is present
-      if (firstYear) {
-        conditions.push(`"1st_Year" = $${values.length + 1}`);
-        values.push(parseInt(firstYear, 10));
-      }
-
-      // Check if secondYear parameter is present
-      if (secondYear) {
-        conditions.push(`"2nd_Year" = $${values.length + 1}`);
-        values.push(parseInt(secondYear, 10));
-      }
-
-      // Check if thirdYear parameter is present
-      if (thirdYear) {
-        conditions.push(`"3rd_Year" = $${values.length + 1}`);
-        values.push(parseInt(thirdYear, 10));
-      }
-
-      // Check if fourthYear parameter is present
-      if (fourthYear) {
-        conditions.push(`"4th_Year" = $${values.length + 1}`);
-        values.push(parseInt(fourthYear, 10));
-      }
-
-      // Check if fifthYear parameter is present
-      if (fifthYear) {
-        conditions.push(`"5th_Year" = $${values.length + 1}`);
-        values.push(parseInt(fifthYear, 10));
       }
 
       // Append conditions to the query if any
@@ -775,7 +728,7 @@ app.post(
       };
 
       const result = await pool.query(query);
-
+      console.log(query, "querryy")
       if (result.rows.length === 0) {
         return res
           .status(404)

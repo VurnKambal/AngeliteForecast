@@ -20,6 +20,8 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
     thirdYear: "",
     fourthYear: "",
     fifthYear: "",
+    gradeEleven: "",
+    gradeTwelve: "",
   });
   const [searchText, setSearchText] = useState("");
   const locationFilters = [
@@ -42,7 +44,6 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
       ...filterParams,
       department: department,
     });
-    console.log(`Filter applied: ${department}`);
   };
 
   const removeAppliedFilter = () => {
@@ -59,10 +60,11 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
       thirdYear: "",
       fourthYear: "",
       fifthYear: "",
+      gradeEleven: "",
+      gradeTwelve: "",
     });
     setSearchText("");
     removeFilter();
-    console.log("Filter and search reset");
   };
 
   useEffect(() => {
@@ -70,17 +72,12 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
       removeFilter();
     } else {
       applySearch(searchText);
-      console.log(`Search applied: ${searchText}`);
     }
   }, [searchText]);
 
   return (
     <div className="inline-block float-right">
-      <SearchBar
-        searchText={searchText}
-        styleClass="mr-4"
-        setSearchText={setSearchText}
-      />
+      
       {filterParams.department && (
         <button
           onClick={removeAppliedFilter}
@@ -128,6 +125,8 @@ function Transactions() {
     thirdYear: "",
     fourthYear: "",
     fifthYear: "",
+    gradeEleven: "",
+    gradeTwelve: "",
   });
   const [search, setSearch] = useState("");
   const [departments, setDepartments] = useState([]);
@@ -170,20 +169,15 @@ function Transactions() {
         }
       });
 
-      // Add search param to the URL
-      if (search) {
-        params.push(`search=${encodeURIComponent(search)}`);
-      }
 
       if (params.length > 0) {
         url += `?${params.join("&")}`;
       }
 
-      console.log(`Fetching data with URL: ${url}`);
 
       const response = await axios.get(url);
+      console.log(response.data)
       setTrans(response.data);
-      console.log("Data fetched successfully:", response.data);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -225,8 +219,17 @@ function Transactions() {
       );
 
       if (response.data && Array.isArray(response.data)) {
-        setMajors(response.data);
-        return response.data;
+        // Remove duplicates while preserving order
+        const uniqueMajors = response.data.reduce((acc, major) => {
+          if (!acc.some(m => m.Major === major.Major)) {
+            acc.push(major);
+          }
+          return acc;
+        }, []);
+
+        setMajors(uniqueMajors);
+        console.log("Unique majors:", uniqueMajors);
+        return uniqueMajors;
       } else {
         console.error("Unexpected majors data structure:", response.data);
         return [];
@@ -252,6 +255,8 @@ function Transactions() {
       thirdYear: "",
       fourthYear: "",
       fifthYear: "",
+      gradeEleven: "",
+      gradeTwelve: "",
     });
     setSearch("");
     fetchData(); // Fetch data
@@ -285,13 +290,12 @@ function Transactions() {
     console.log("majors:",currentMajors)
 
     // Filter the current majors to keep only those belonging to the selected departments
-    const updatedMajors = currentMajors.filter(majorName => {
-      console.log(majors[0].Major, "name", majorName)
-      const majorObj = majors.find(m => m.Major === majorName);
-      console.log(majorObj)
+    const updatedMajors = [...new Set(currentMajors.filter(majorName => {
+      const majorObj = majors.find(m => m.Major.trim() === majorName);
       return majorObj && selectedDepartments.includes(majorObj.Department);
-    });
-    console.log(updatedMajors)
+    }))];
+
+    console.log(updatedMajors, "majorssss")
     setFilterParams(prevData => ({
       ...prevData,
       department: selectedDepartments,
@@ -320,7 +324,6 @@ function Transactions() {
         topMargin="mt-2"
         TopSideButtons={
           <TopSideButtons
-            applySearch={applySearch}
             applyFilter={applyFilter}
             removeFilter={removeFilter}
           />
@@ -345,7 +348,7 @@ function Transactions() {
                 onChange={handleDepartmentChange}
                 options={departments.map(dept => ({ value: dept.Department, label: dept.Department }))}
                 isMulti
-                className="basic-multi-select"
+                className="basic-multi-select absolute inset-0 z-10"  // Add these classes
                 classNamePrefix="select"
                 required
               />
@@ -407,7 +410,6 @@ function Transactions() {
                 value={sliderValue}
                 onChange={(value) => setSliderValue(value)}
                 onChangeComplete={(value) => {
-                  console.log(`Start Year: ${value[0]} ${value[1]}`);
                   setFilterParams({
                     ...filterParams,
                     startYear: value[0],
@@ -436,6 +438,19 @@ function Transactions() {
                 }}
                 step={1}
                 tipFormatter={(value) => `S.Y. ${value}-${value + 1}`}
+                styles={{
+                  handle: {
+                    borderColor: 'transparent',
+                    height: 14,
+                    width: 14,
+                    marginTop: -5,
+                    backgroundColor: '#fff',
+                    boxShadow: '0 0 0 2px #1890ff'
+                  },
+                  track: {
+                    backgroundColor: '#1890ff'
+                  }
+                }}
               />
             </div>
 
@@ -477,11 +492,13 @@ function Transactions() {
                 <th>Semester</th>
                 <th>Department</th>
                 <th>Major</th>
-                <th>First_Year</th>
-                <th>Second_Year</th>
-                <th>Third_Year</th>
-                <th>Fourth_Year</th>
-                <th>Fifth_Year</th>
+                <th>1st Year</th>
+                <th>2nd Year</th>
+                <th>3rd Year</th>
+                <th>4th Year</th>
+                <th>5th Year</th>
+                <th>Grade 11</th>
+                <th>Grade 12</th>
                 <th>TOTAL</th>
               </tr>
             </thead>
@@ -492,7 +509,9 @@ function Transactions() {
                   (l["2nd_Year"] || 0) +
                   (l["3rd_Year"] || 0) +
                   (l["4th_Year"] || 0) +
-                  (l["5th_Year"] || 0);
+                  (l["5th_Year"] || 0) + 
+                  (l["Grade_11"] || 0) +
+                  (l["Grade_12"] || 0);
 
                 return (
                   <tr key={k}>
@@ -507,6 +526,8 @@ function Transactions() {
                     <td>{l["3rd_Year"] || 0}</td>
                     <td>{l["4th_Year"] || 0}</td>
                     <td>{l["5th_Year"] || 0}</td>
+                    <td>{l["Grade_11"] || 0}</td>
+                    <td>{l["Grade_12"] || 0}</td>
                     <td>{total}</td>
                   </tr>
                 );
