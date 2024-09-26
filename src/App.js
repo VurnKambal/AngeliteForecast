@@ -6,16 +6,7 @@ import checkAuth from './app/auth';
 import initializeApp from './app/init';
 import { useSelector } from 'react-redux';
 
-// Create a wrapper component for unauthenticated routes
-const UnauthenticatedRoute = ({ children }) => {
-  const authStatus = useSelector(state => state.auth.userLoggedIn);
-  
-  if (authStatus) {
-    return <Navigate to="/app/welcome" replace />;
-  }
-  
-  return children;
-};
+
 
 // Importing pages
 const Layout = lazy(() => import('./containers/Layout'))
@@ -32,6 +23,16 @@ initializeApp()
 // Check for login and initialize axios
 const token = checkAuth()
 
+// Create a wrapper component for unauthenticated routes
+const UnauthenticatedRoute = ({ children }) => {
+  const authStatus = useSelector(state => token);
+  
+  if (authStatus) {
+    return <Navigate to="/app/welcome" replace />;
+  }
+  
+  return children;
+};
 
 function App() {
   useEffect(() => {
