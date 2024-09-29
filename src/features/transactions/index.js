@@ -133,15 +133,20 @@ function Transactions() {
   const [departments, setDepartments] = useState([]);
   const [majors, setMajors] = useState([]);
   const [latestDataYear, setLatestDataYear] = useState(null);
-  const [schoolYearRange, setSchoolYearRange] = useState([2016, new Date().getFullYear()]);
+  const [schoolYearRange, setSchoolYearRange] = useState([
+    2016,
+    new Date().getFullYear(),
+  ]);
   const [sliderValue, setSliderValue] = useState(schoolYearRange);
 
   // Fetch the lowest year and latest year
   const fetchYearRange = async () => {
     try {
       const [lowestYearResponse, latestYearResponse] = await Promise.all([
-        axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/transactions/lowest-enrollment-year`),
-        axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/latest-data-year`)
+        axios.get(
+          `${process.env.REACT_APP_API_BASE_URL}/api/transactions/lowest-enrollment-year`
+        ),
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/latest-data-year`),
       ]);
 
       const lowestYear = lowestYearResponse.data.lowestYear;
@@ -275,42 +280,44 @@ function Transactions() {
 
   // Handle department change
   const handleDepartmentChange = async (selectedOptions) => {
-    const selectedDepartments = selectedOptions.map(option => option.value);
-    
+    const selectedDepartments = selectedOptions.map((option) => option.value);
+
     // Fetch majors for the selected departments
     await fetchMajors(selectedDepartments);
-    
+
     // Ensure filterParams.major is an array
-    const currentMajors = Array.isArray(filterParams.major) ? filterParams.major : [];
-    console.log("majors:",currentMajors)
+    const currentMajors = Array.isArray(filterParams.major)
+      ? filterParams.major
+      : [];
+    console.log("majors:", currentMajors);
 
     // Filter the current majors to keep only those belonging to the selected departments
-    const updatedMajors = currentMajors.filter(majorName => {
-      console.log(majors[0].Major, "name", majorName)
-      const majorObj = majors.find(m => m.Major === majorName);
-      console.log(majorObj)
+    const updatedMajors = currentMajors.filter((majorName) => {
+      console.log(majors[0].Major, "name", majorName);
+      const majorObj = majors.find((m) => m.Major === majorName);
+      console.log(majorObj);
       return majorObj && selectedDepartments.includes(majorObj.Department);
     });
-    console.log(updatedMajors)
-    setFilterParams(prevData => ({
+    console.log(updatedMajors);
+    setFilterParams((prevData) => ({
       ...prevData,
       department: selectedDepartments,
-      major: updatedMajors
+      major: updatedMajors,
     }));
   };
 
   // Handle major change
   const handleMajorChange = (selectedOptions) => {
-    const selectedMajors = selectedOptions.map(option => option.value);
-    setFilterParams(prevData => ({
+    const selectedMajors = selectedOptions.map((option) => option.value);
+    setFilterParams((prevData) => ({
       ...prevData,
-      major: selectedMajors
+      major: selectedMajors,
     }));
   };
 
   const semesterOptions = [
-    { value: '1', label: '1st Semester' },
-    { value: '2', label: '2nd Semester' }
+    { value: "1", label: "1st Semester" },
+    { value: "2", label: "2nd Semester" },
   ];
 
   return (
@@ -333,7 +340,13 @@ function Transactions() {
                 <span className="label-text required">Department</span>
                 <button
                   type="button"
-                  onClick={() => setFilterParams({ ...filterParams, department: "", major: [] })}
+                  onClick={() =>
+                    setFilterParams({
+                      ...filterParams,
+                      department: "",
+                      major: [],
+                    })
+                  }
                   className="btn btn-xs btn-ghost ml-2"
                 >
                   Reset
@@ -341,9 +354,19 @@ function Transactions() {
               </label>
               <Select
                 name="department"
-                value={departments.filter(dept => filterParams.department.includes(dept.Department)).map(dept => ({ value: dept.Department, label: dept.Department }))}
+                value={departments
+                  .filter((dept) =>
+                    filterParams.department.includes(dept.Department)
+                  )
+                  .map((dept) => ({
+                    value: dept.Department,
+                    label: dept.Department,
+                  }))}
                 onChange={handleDepartmentChange}
-                options={departments.map(dept => ({ value: dept.Department, label: dept.Department }))}
+                options={departments.map((dept) => ({
+                  value: dept.Department,
+                  label: dept.Department,
+                }))}
                 isMulti
                 className="basic-multi-select"
                 classNamePrefix="select"
@@ -356,7 +379,9 @@ function Transactions() {
                 <span className="label-text required">Major</span>
                 <button
                   type="button"
-                  onClick={() => setFilterParams({ ...filterParams, major: [] })}
+                  onClick={() =>
+                    setFilterParams({ ...filterParams, major: [] })
+                  }
                   className="btn btn-xs btn-ghost ml-2"
                 >
                   Reset
@@ -364,12 +389,22 @@ function Transactions() {
               </label>
               <Select
                 name="major"
-                value={(Array.isArray(filterParams.major) ? filterParams.major : []).map(majorName => {
-                  const majorObj = majors.find(m => m.Major === majorName);
-                  return majorObj ? { value: majorObj.Major, label: majorObj.Major } : null;
-                }).filter(Boolean)}
+                value={(Array.isArray(filterParams.major)
+                  ? filterParams.major
+                  : []
+                )
+                  .map((majorName) => {
+                    const majorObj = majors.find((m) => m.Major === majorName);
+                    return majorObj
+                      ? { value: majorObj.Major, label: majorObj.Major }
+                      : null;
+                  })
+                  .filter(Boolean)}
                 onChange={handleMajorChange}
-                options={majors.map(major => ({ value: major.Major, label: major.Major }))}
+                options={majors.map((major) => ({
+                  value: major.Major,
+                  label: major.Major,
+                }))}
                 isMulti
                 className="basic-multi-select"
                 classNamePrefix="select"
@@ -389,10 +424,10 @@ function Transactions() {
                     setFilterParams({
                       ...filterParams,
                       startYear: schoolYearRange[0],
-                      endYear: schoolYearRange[0]+1,
+                      endYear: schoolYearRange[0] + 1,
                       startYear_1: schoolYearRange[1],
-                      endYear_1: schoolYearRange[1]+1
-                    })
+                      endYear_1: schoolYearRange[1] + 1,
+                    });
                     setSliderValue(schoolYearRange);
                   }}
                   className="btn btn-xs btn-ghost ml-2"
@@ -411,28 +446,32 @@ function Transactions() {
                   setFilterParams({
                     ...filterParams,
                     startYear: value[0],
-                    endYear: value[0]+1,
+                    endYear: value[0] + 1,
                     startYear_1: value[1],
-                    endYear_1: value[1]+1
+                    endYear_1: value[1] + 1,
                   });
                 }}
                 marks={{
                   [schoolYearRange[0]]: {
-                    style: { 
-                      whiteSpace: 'nowrap',
-                      transform: 'translateX(0%)',
-                      left: '0%'
+                    style: {
+                      whiteSpace: "nowrap",
+                      transform: "translateX(0%)",
+                      left: "0%",
                     },
-                    label: `S.Y. ${schoolYearRange[0]}-${schoolYearRange[0] + 1}`
+                    label: `S.Y. ${schoolYearRange[0]}-${
+                      schoolYearRange[0] + 1
+                    }`,
                   },
                   [schoolYearRange[1]]: {
-                    style: { 
-                      whiteSpace: 'nowrap',
-                      transform: 'translateX(-100%)',
-                      left: '100%'
+                    style: {
+                      whiteSpace: "nowrap",
+                      transform: "translateX(-100%)",
+                      left: "100%",
                     },
-                    label: `S.Y. ${schoolYearRange[1]}-${schoolYearRange[1] + 1}`
-                  }
+                    label: `S.Y. ${schoolYearRange[1]}-${
+                      schoolYearRange[1] + 1
+                    }`,
+                  },
                 }}
                 step={1}
                 tipFormatter={(value) => `S.Y. ${value}-${value + 1}`}
@@ -444,7 +483,9 @@ function Transactions() {
                 <span className="label-text required">Semester</span>
                 <button
                   type="button"
-                  onClick={() => setFilterParams({ ...filterParams, semester: [] })}
+                  onClick={() =>
+                    setFilterParams({ ...filterParams, semester: [] })
+                  }
                   className="btn btn-xs btn-ghost ml-2"
                 >
                   Reset
@@ -452,11 +493,13 @@ function Transactions() {
               </label>
               <Select
                 name="semester"
-                value={semesterOptions.filter(option => filterParams.semester.includes(option.value))}
+                value={semesterOptions.filter((option) =>
+                  filterParams.semester.includes(option.value)
+                )}
                 onChange={(selectedOptions) => {
                   setFilterParams({
                     ...filterParams,
-                    semester: selectedOptions.map(option => option.value)
+                    semester: selectedOptions.map((option) => option.value),
                   });
                 }}
                 options={semesterOptions}
