@@ -101,9 +101,7 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
             </li>
           ))}
           <div className="divider mt-0 mb-0"></div>
-          <li>
-            <a onClick={removeAppliedFilter}>Remove Filter</a>
-          </li>
+          
         </ul>
       </div>
     </div>
@@ -322,7 +320,6 @@ function Transactions() {
       <TitleCard
         title="Past Enrollment Datasets [S.Y. 2016-2023]"
         topMargin="mt-2"
-        
       >
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -343,7 +340,7 @@ function Transactions() {
                 onChange={handleDepartmentChange}
                 options={departments.map(dept => ({ value: dept.Department, label: dept.Department }))}
                 isMulti
-                className="basic-multi-select absolute inset-0 z-10"  // Add these classes
+                className="basic-multi-select absolute inset-0 z-60"  // Add these classes
                 classNamePrefix="select"
                 required
               />
@@ -414,21 +411,23 @@ function Transactions() {
                   });
                 }}
                 marks={{
-                  [schoolYearRange[0]]: {
+                  [sliderValue[0]]: {
                     style: { 
                       whiteSpace: 'nowrap',
-                      transform: 'translateX(0%)',
-                      left: '0%'
+                      transform: sliderValue[0] === schoolYearRange[0] ? 'translateX(0%)' : 'translateX(-50%)',
+                      color: '#1890ff',
+                      fontWeight: 'bold',
                     },
-                    label: `S.Y. ${schoolYearRange[0]}-${schoolYearRange[0] + 1}`
+                    label: `S.Y. ${sliderValue[0]}-${sliderValue[0] + 1}`
                   },
-                  [schoolYearRange[1]]: {
+                  [sliderValue[1]]: {
                     style: { 
                       whiteSpace: 'nowrap',
-                      transform: 'translateX(-100%)',
-                      left: '100%'
+                      transform: sliderValue[1] === schoolYearRange[1] ? 'translateX(-100%)' : 'translateX(-50%)',
+                      color: '#1890ff',
+                      fontWeight: 'bold'
                     },
-                    label: `S.Y. ${schoolYearRange[1]}-${schoolYearRange[1] + 1}`
+                    label: `S.Y. ${sliderValue[1]}-${sliderValue[1] + 1}`
                   }
                 }}
                 step={1}
@@ -440,12 +439,20 @@ function Transactions() {
                     width: 14,
                     marginTop: -5,
                     backgroundColor: '#fff',
-                    boxShadow: '0 0 0 2px #1890ff'
+                    boxShadow: '0 0 0 2px #1890ff',
+                    zIndex: 0
                   },
                   track: {
                     backgroundColor: '#1890ff'
+                  },
+                  rail: {
+                    backgroundColor: '#d9d9d9'
+                  },
+                  mark: {
+                    display: 'none'  // Hide default marks
                   }
                 }}
+                className="z-1"
               />
             </div>
 
