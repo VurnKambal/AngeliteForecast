@@ -24,7 +24,7 @@ function Leads() {
         axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/latest-data-year`)
       ]);
 
-      const lowestYear = lowestYearResponse.data.lowestYear;
+      const lowestYear = 2018 //lowestYearResponse.data.lowestYear;
       const latestYear = latestYearResponse.data.latestYear;
 
       setSchoolYearRange([parseInt(lowestYear, 10), parseInt(latestYear, 10)]);
@@ -216,11 +216,7 @@ function Leads() {
               />
             </div>
           </div>
-          <div className="flex justify-end">
-            <button type="submit" className="btn btn-primary">
-              Apply Filters
-            </button>
-          </div>
+          
         </form>
         <div className="divider pt-8 pb-6"></div>
         <div className="overflow-x-auto w-full">
