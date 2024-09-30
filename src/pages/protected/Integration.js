@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { setPageTitle } from "../../features/common/headerSlice";
 import axios from "axios";
+
+import DashboardStats from "../../features/dashboard/components/DashboardStats";
 import TitleCard from "../../components/Cards/TitleCard";
+import UserGroupIcon from "@heroicons/react/24/outline/UserGroupIcon";
+import UsersIcon from "@heroicons/react/24/outline/UsersIcon";
+import CircleStackIcon from "@heroicons/react/24/outline/CircleStackIcon";
+import CreditCardIcon from "@heroicons/react/24/outline/CreditCardIcon";
 
 function InternalPage() {
   const dispatch = useDispatch();
@@ -39,6 +45,67 @@ function InternalPage() {
 
   const [latestSchoolYear, setLatestSchoolYear] = useState(null);
   const [latestSemester, setLatestSemester] = useState(null);
+  const [statsData, setStatsData] = useState([]);
+
+  const [showResults, setShowResults] = useState(false);
+
+
+  useEffect(() => {
+    const fetchStatsData = async () => {
+      try {
+        let selectedYear = formData.Start_Year;
+        let selectedSemester = formData.Semester;
+        let selectedDepartment = formData.Department;
+        
+      
+        const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/dashboard-selected-stats`, {
+          params: { selectedYear: selectedYear, selectedSemester: selectedSemester,
+                    selectedDepartment: selectedDepartment}
+          }
+        );
+        const data = response.data;
+        
+        setStatsData([
+          {
+            title: `${data.admission.year} ${data.admission.department}`,
+            value: data.admission.number_of_applicants.toLocaleString(),
+            icon: <UserGroupIcon className="w-8 h-8" />,
+            description: "Total Number of Applicants",
+          },
+          {
+            title: `${data.enrollment.year}-${data.enrollment.year + 1} ${data.enrollment.semester} Sem`,
+            value: data.enrollment.total.toLocaleString(),
+            icon: <UserGroupIcon className="w-8 h-8" />,
+            description: "Total Students",
+          },
+          {
+            title: `${data.inflation.year} `,
+            value: `${data.inflation.rate.toFixed(4)}%`,
+            icon: <CreditCardIcon className="w-8 h-8" />,
+            description: "Philippines Inflation Rate",
+          },
+          {
+            title: `${data.hfce.year}`,
+            value: data.hfce.value.toLocaleString(),
+            icon: <CircleStackIcon className="w-8 h-8" />,
+            description: 'Household Final Consumption Expenditure',
+          },
+          {
+            title: `${data.cpi.year}`,
+            value: data.cpi.value.toFixed(1),
+            icon: <UsersIcon className="w-8 h-8" />,
+            description: `${data.cpi.region} Consumer Price Index`,
+          },
+        ]);
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        // Handle error (e.g., show error message to user)
+      }
+    };
+
+    fetchStatsData();
+  }, [formData.Start_Year,  formData.Department]);
+
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -266,6 +333,9 @@ function InternalPage() {
         };
         setPredictionResult(lastPrediction);
 
+        // After successful prediction
+        setShowResults(true);
+        console.log("show results:", showResults);
         console.log(lastPrediction);
       } catch (error) {
         console.error("Error submitting form:", error);
@@ -308,6 +378,7 @@ function InternalPage() {
         );
         document.getElementById("plot").innerHTML = "Error submitting form";
       }
+      
     } catch (error) {
       console.error("Error submitting form:", error);
       document.getElementById("Prediction").innerHTML = "Error submitting form";
@@ -336,8 +407,13 @@ function InternalPage() {
           color: red;
         }
       `}</style>
-
-      <TitleCard title="Forecasting Algorithm" topMargin="mt-2">
+      {/** ---------------------- Different stats content 1 ------------------------- */}
+      <div className="grid lg:grid-cols-5 mt-2 md:grid-cols-2 grid-cols-1 gap-6">
+        {statsData.map((d, k) => {
+          return <DashboardStats key={k} {...d} colorIndex={k} />;
+        })}
+      </div>
+      <TitleCard title="Forecasting Algorithm" topMargin="mt-10">
         {latestDataYear ? (
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6">
             {/* Department and Major Row */}
@@ -648,56 +724,58 @@ function InternalPage() {
 
             <div className="divider"></div>
 
-            <div className="grid grid-cols-1 md:grid-cols-[25%,75%] gap-4">
-              {/* Prediction Container */}
-              <div className="prediction-container card shadow-md bg-info p-4">
-                <h2 className="text-error font-semibold mb-2">Results:</h2>
-                <div className="results-content">
-                  <div
-                    id="Prediction"
-                    className="text-neutral prediction-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
-                  >
-                    <h3 className="font-semibold mb-1">Prediction:</h3>
-                    {predictionResult.Prediction
-                      ? predictionResult.Prediction
-                      : "N/A"}
-                  </div>
+            {showResults && (
+              <div className="grid grid-cols-1 md:grid-cols-[25%,75%] gap-4">
+                {/* Prediction Container */}
+                <div className="prediction-container card shadow-md bg-info p-4">
+                  <h2 className="text-error font-semibold mb-2">Results:</h2>
+                  <div className="results-content">
+                    <div
+                      id="Prediction"
+                      className="text-neutral prediction-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
+                    >
+                      <h3 className="font-semibold mb-1">Prediction:</h3>
+                      {predictionResult.Prediction
+                        ? predictionResult.Prediction
+                        : "N/A"}
+                    </div>
 
-                  <div
-                    id="PreviousSemester"
-                    className="text-neutral previous-semester-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
-                  >
-                    <h3 className="font-semibold mb-1">Previous Semester:</h3>
-                    {predictionResult.Previous_Semester
-                      ? predictionResult.Previous_Semester
-                      : "N/A"}
-                  </div>
+                    <div
+                      id="PreviousSemester"
+                      className="text-neutral previous-semester-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
+                    >
+                      <h3 className="font-semibold mb-1">Previous Semester:</h3>
+                      {predictionResult.Previous_Semester
+                        ? predictionResult.Previous_Semester
+                        : "N/A"}
+                    </div>
 
+                    <div
+                      id="AttritionRate"
+                      className="text-neutral attrition-text p-4 bg-warning rounded-xl overflow-y-auto"
+                    >
+                      <h3 className="font-semibold mb-1">Attrition Rate:</h3>
+                      {predictionResult.Attrition_Rate
+                        ? `${predictionResult.Attrition_Rate.toFixed(2)}%`
+                        : "N/A"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Plot Container */}
+                <div className="plot-container card shadow-md bg-base-100 border-2 border-accent">
+                  <h2 className="text-lg font-semibold mb-1 text-primary px-4 py-3">
+                    Plot:
+                  </h2>
                   <div
-                    id="AttritionRate"
-                    className="text-neutral attrition-text p-4 bg-warning rounded-xl overflow-y-auto"
+                    id="plot"
+                    className="p-3 bg-base-100 rounded-xl overflow-hidden h-full"
                   >
-                    <h3 className="font-semibold mb-1">Attrition Rate:</h3>
-                    {predictionResult.Attrition_Rate
-                      ? `${predictionResult.Attrition_Rate.toFixed(2)}%`
-                      : "N/A"}
+                    {/* Plot content goes here */}
                   </div>
                 </div>
               </div>
-
-              {/* Plot Container */}
-              <div className="plot-container card shadow-md bg-base-100 border-2 border-accent">
-                <h2 className="text-lg font-semibold mb-1 text-primary px-4 py-3">
-                  Plot:
-                </h2>
-                <div
-                  id="plot"
-                  className="p-3 bg-base-100 rounded-xl overflow-hidden h-full"
-                >
-                  {/* Plot content goes here */}
-                </div>
-              </div>
-            </div>
+            )}
           </form>
         ) : (
           <p className="text-info">Loading...</p>

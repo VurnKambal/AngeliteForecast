@@ -36,17 +36,11 @@ const validate = (req, res, next) => {
   }
   next();
 };
+
+
 // Endpoint for dashboard stats
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
-    // Create a new pool
-    const pool = new Pool({
-      user: process.env.DB_USER,
-      host: process.env.DB_HOST,
-      database: process.env.DB_NAME,
-      password: process.env.DB_PASSWORD,
-      port: process.env.DB_PORT,
-    });
 
     // Query for enrollment data
     const enrollmentQuery = `
@@ -152,6 +146,162 @@ app.get("/api/dashboard-stats", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+
+app.get("/api/dashboard-selected-stats", async (req, res) => {
+  try {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth(); // + 1 JavaScript months are 0-indexed
+
+
+    var { selectedYear, selectedSemester, selectedDepartment } = req.query;
+    
+    if (!selectedYear || !selectedSemester) {
+      return res.status(400).json({ error: "Year and semester are required" });
+    }
+
+    
+    selectedYear = parseInt(selectedYear);
+    selectedSemester = parseInt(selectedSemester);
+
+    if (selectedSemester === 2) {
+      enrollmentYear = selectedYear
+      enrollmentSemester = 1;
+    } else if (selectedSemester === 1) {
+      enrollmentYear = selectedYear - 1
+      enrollmentSemester = 2;
+    }
+
+
+    // Query for applicants
+    let applicantsQuery;
+    let applicantsQueryParams;
+    
+    
+    if (selectedDepartment) {
+      applicantsQuery = `
+        SELECT SUM("Number_of_Applicants") as total_applicants
+          FROM admission
+          WHERE "Start_Year" = $1 
+            AND "Department" = $2;
+      `;
+      applicantsQueryParams = [selectedYear, selectedDepartment];
+    } else {
+      const departmentsQuery = `
+        SELECT DISTINCT "Department"
+          FROM processed_factors
+          ORDER BY "Department";
+      `;
+      const departments = await pool.query(departmentsQuery);
+
+      applicantsQuery = `
+        SELECT SUM("Number_of_Applicants") as total_applicants
+          FROM admission
+          WHERE "Start_Year" = $1
+            AND "Department" IN (${departments.rows.map(dept => `'${dept.Department}'`).join(', ')});
+      `;
+      applicantsQueryParams = [selectedYear];
+    }
+
+
+    const admissionResult = await pool.query(applicantsQuery, applicantsQueryParams);
+    console.log("admissionnn", admissionResult)
+
+
+    
+    // Query for enrollment data based on year and semester
+    const enrollmentQuery = `
+      SELECT "Start_Year", "Semester", SUM("1st_Year" + "2nd_Year" + "3rd_Year" + "4th_Year" + "5th_Year") as total
+      FROM enrollment
+      WHERE "Start_Year" = $1 AND "Semester" = $2
+      GROUP BY "Start_Year", "Semester";
+    `;
+
+    const enrollmentResult = await pool.query(enrollmentQuery, [enrollmentYear, enrollmentSemester]);
+
+
+    
+    // Query for inflation rate from the past year based on the given year
+    const inflationQuery = `
+      SELECT "Start_Year", "Inflation_Rate"
+      FROM inflation_rate
+      WHERE "Start_Year" = $1 - 1
+      LIMIT 1;
+    `;
+    const inflationResult = await pool.query(inflationQuery, [selectedYear]);
+    // Query for HFCE
+    const hfceQuery = `
+      SELECT 
+        "Start_Year", 
+        AVG("HFCE_Education") as "HFCE_Education", 
+        AVG("HFCE") as "HFCE"
+      FROM hfce
+      WHERE "Start_Year" = $1
+      GROUP BY "Start_Year"
+    `;
+    const hfceResult = await pool.query(hfceQuery, [selectedYear]);
+    
+
+    // Modify your CPI query to use cpiEndMonth
+    const cpiQuery = `
+      WITH cpi_data AS (
+        SELECT "Year", "Month", "CPI_Region3"
+        FROM cpi_education
+        WHERE "Month" != 'Ave' AND "Year" = $1
+      )
+      SELECT 
+        "Year",
+        ROUND(AVG("CPI_Region3")::numeric, 2) AS "Average_CPI_Region3"
+      FROM cpi_data
+      GROUP BY "Year"
+    `;
+
+    const cpiResult = await pool.query(cpiQuery, [selectedYear]);
+
+    
+
+
+    // Construct the response
+    const dashboardStats = {
+      admission: {
+        year: selectedYear,
+        department: selectedDepartment || 'HAU',
+        number_of_applicants: parseInt(admissionResult.rows[0].total_applicants),
+      },
+      enrollment: {
+        year: parseInt(enrollmentResult.rows[0].Start_Year),
+        semester: enrollmentResult.rows[0].Semester == 1 ? "1st" : "2nd",
+        total: parseInt(enrollmentResult.rows[0].total),
+      },
+      inflation: {
+        year: inflationResult.rows[0].Start_Year, // Previous year's inflation
+        rate: parseFloat(inflationResult.rows[0].Inflation_Rate),
+      },
+      hfce: {
+        year: hfceResult.rows[0].Start_Year,
+        value: parseInt(hfceResult.rows[0].HFCE),
+        quarter: `1st-${['1st', '2nd', '3rd', '4th'][hfceResult.rows[0].max_quarter - 1]} Quarter Average`,
+      },
+
+      cpi: {
+        year: selectedYear,
+        value: parseFloat(cpiResult.rows[0].Average_CPI_Region3),
+        region: "Region 3",
+      },
+    };
+
+    res.json(dashboardStats);
+    } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+    res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+
+
 app.get(
   "/api/transactions",
   [
@@ -206,7 +356,6 @@ app.get(
       // Check if semester parameter is present and is an array
       if (semester) {
         const semesters = semester.split(',').map(s => s.trim());
-       console.log(semester)
         const placeholders = semesters.map((_, index) => `$${values.length + index + 1}`).join(', ');
         conditions.push(`"Semester" IN (${placeholders})`);
         values.push(...semesters);
@@ -294,7 +443,6 @@ app.get("/api/transactions/majors", async (req, res) => {
     };
 
     const result = await pool.query(query);
-    console.log(result, "resulttttt");
     res.json(result.rows);
   } catch (err) {
     console.error("Error occurred:", err);
@@ -728,7 +876,6 @@ app.post(
       };
 
       const result = await pool.query(query);
-      console.log(query, "querryy")
       if (result.rows.length === 0) {
         return res
           .status(404)
