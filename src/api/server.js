@@ -647,16 +647,24 @@ app.post(
   }
 );
 
+
 app.get(
   "/api/leads",
   [
     query("department").optional().isString().trim().escape(),
     query("search").optional().isString().trim().escape(),
+    query("start_year").optional().isInt(),
+    query("end_year").optional().isInt(),
   ],
   validate,
   async (req, res) => {
-    const { department, search } = req.query;
+    const { department, search, start_year, end_year } = req.query;
     try {
+      let conditions = [];
+      let values = [start_year, end_year];
+      let paramCounter = 2;
+
+      // Base query
       let query = `
         SELECT DISTINCT
           "Start_Year",
@@ -667,24 +675,43 @@ app.get(
           ROUND(CAST("HFCE" AS NUMERIC), 2) AS "Overall_HFCE",
           ROUND(CAST("Inflation_Rate_lag_1" AS NUMERIC), 2) as "Inflation_Rate_Past"
         FROM processed_factors
-        WHERE "Start_Year" >= 2018
-        ${department ? 'AND "Department" = $1' : ""}
-        ${search ? `
-          AND (
-            "Department" ILIKE $2 OR
-            "CPI_Region3"::TEXT ILIKE $2 OR
-            "HFCE_Education"::TEXT ILIKE $2 OR
-            "HFCE"::TEXT ILIKE $2 OR
-            "Inflation_Rate_lag_1"::TEXT ILIKE $2
-          )
-        ` : ""}
-        ORDER BY "Start_Year" ASC, "Department" ASC
+        WHERE "Start_Year" >= $1 AND "Start_Year" <= $2
       `;
 
+      // Handle multiple departments
+      if (department) {
+        const departments = department.split(",");
+        const departmentConditions = departments.map((_, index) => {
+          paramCounter++;
+          return `"Department" = $${paramCounter}`;
+        });
+        conditions.push(`(${departmentConditions.join(" OR ")})`);
+        values.push(...departments);
+      }
 
-      const values = [];
-      if (department) values.push(department);
-      if (search) values.push(`%${search}%`);
+      // Handle search
+      if (search) {
+        paramCounter++;
+        conditions.push(`(
+          "Department" ILIKE $${paramCounter} OR
+          "CPI_Region3"::TEXT ILIKE $${paramCounter} OR
+          "HFCE_Education"::TEXT ILIKE $${paramCounter} OR
+          "HFCE"::TEXT ILIKE $${paramCounter} OR
+          "Inflation_Rate_lag_1"::TEXT ILIKE $${paramCounter}
+        )`);
+        values.push(`%${search}%`);
+      }
+
+      // Add conditions to query
+      if (conditions.length > 0) {
+        query += ` AND ${conditions.join(" AND ")}`;
+      }
+
+      // Add ordering
+      query += ` ORDER BY "Start_Year" ASC, "Department" ASC`;
+
+      console.log("Executing query:", query);
+      console.log("With values:", values);
 
       const result = await pool.query(query, values);
       res.json(result.rows);
@@ -694,6 +721,26 @@ app.get(
     }
   }
 );
+
+app.get('/api/leads/lowest-year',
+  async (req, res) => {
+    try {
+      const result = await pool.query('SELECT MIN("Start_Year") as lowest_year FROM processed_factors');
+      console.log(result.rows[0], result.rows[0])
+      if (result.rows.length > 0 && result.rows[0].lowest_year) {
+        res.json({ lowestYear: result.rows[0].lowest_year });
+      } else {
+        res.status(404).json({ error: 'No data found' });
+      }
+    } catch (error) {
+      console.error('Error fetching lowest year:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+
 
 // Login endpoint
 app.post(
@@ -731,6 +778,7 @@ app.post(
     }
   }
 );
+
 
 // New route to get the latest data year
 app.get("/api/latest-data-year", async (req, res) => {
