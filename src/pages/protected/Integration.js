@@ -59,7 +59,8 @@ function InternalPage() {
         
       
         const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/dashboard-selected-stats`, {
-          params: { selectedYear: selectedYear, selectedSemester: selectedSemester,
+          params: { selectedYear: selectedYear,
+                    selectedSemester: selectedSemester,
                     selectedDepartment: selectedDepartment}
           }
         );
@@ -104,7 +105,7 @@ function InternalPage() {
     };
 
     fetchStatsData();
-  }, [formData.Start_Year,  formData.Department]);
+  }, [formData.Start_Year, formData.Semester, formData.Department]);
 
 
   useEffect(() => {
