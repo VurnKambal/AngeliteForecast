@@ -32,12 +32,12 @@ const routes = [
     name: 'Dashboard',
   },
   {
-    path: '/app/leads',
+    path: '/app/factors',
     icon: <ClipboardDocumentCheckIcon className={iconClasses} />, // Using available icon "ClipboardDocumentCheckIcon"
     name: 'Factors',
   },
   {
-    path: '/app/transactions',
+    path: '/app/enrollments',
     icon: <TableCellsIcon className={submenuIconClasses} />,
     name: 'Historical Data',
   },
@@ -47,7 +47,7 @@ const routes = [
     name: 'Metrics',
   },
   {
-    path: '/app/integration',
+    path: '/app/forecast',
     icon: <BoltIcon className={iconClasses} />,
     name: 'Forecast',
   },

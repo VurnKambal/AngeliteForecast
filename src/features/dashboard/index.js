@@ -16,12 +16,12 @@ import DoughnutChart from "./components/DoughnutChart";
 import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import MetricsDescriptionCard from "./components/MetricsDescriptionCard.js";
 
 
 const firstYearData = [
   {
-    Algorithm:
-      "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
+    Algorithm: "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
     Test_SMAPE: "37.59%",
     Train_SMAPE: "23.15%",
     Test_MAPE: "77.29%",
@@ -117,287 +117,287 @@ const firstYearData = [
 const secondYearData = [
   {
     Algorithm: "XGBoost DART",
-    Test_SMAPE: "40.05%",
-    Train_SMAPE: "32.28%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "5.9352",
-    Train_MAE: "4.3145",
-    Test_RMSE: "8.8488",
-    Train_RMSE: "9.5219",
-    Test_R2: "98.1032",
-    Train_R2: "99.0757",
+    Test_SMAPE: "13.18%",
+    Train_SMAPE: "19.91%",
+    Test_MAPE: "20.35%",
+    Train_MAPE: "38.68%",
+    Test_MAE: "6.4284",
+    Train_MAE: "3.9163",
+    Test_RMSE: "11.6834",
+    Train_RMSE: "9.6113",
+    Test_R2: "96.6919",
+    Train_R2: "98.9662",
   },
   {
     Algorithm: "Random Forest",
-    Test_SMAPE: "43.83%",
-    Train_SMAPE: "40.04%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "10.3839",
-    Train_MAE: "8.3084",
-    Test_RMSE: "16.1972",
-    Train_RMSE: "22.2177",
-    Test_R2: "93.6446",
-    Train_R2: "94.9680",
+    Test_SMAPE: "20.05%",
+    Train_SMAPE: "28.38%",
+    Test_MAPE: "52.40%",
+    Train_MAPE: "73.04%",
+    Test_MAE: "10.4922",
+    Train_MAE: "7.0445",
+    Test_RMSE: "15.2310",
+    Train_RMSE: "17.4591",
+    Test_R2: "94.3780",
+    Train_R2: "96.5889",
   },
   {
     Algorithm: "Simple Exponential Smoothing",
-    Test_SMAPE: "60.46%",
-    Train_SMAPE: "35.88%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "20.7693",
-    Train_MAE: "9.6554",
-    Test_RMSE: "30.4054",
-    Train_RMSE: "18.1941",
-    Test_R2: "77.9094",
-    Train_R2: "96.8404",
+    Test_SMAPE: "35.86%",
+    Train_SMAPE: "20.06%",
+    Test_MAPE: "75.98%",
+    Train_MAPE: "26.22%",
+    Test_MAE: "23.2727",
+    Train_MAE: "10.3909",
+    Test_RMSE: "32.4151",
+    Train_RMSE: "19.1788",
+    Test_R2: "74.5357",
+    Train_R2: "96.2111",
   },
   {
     Algorithm: "Moving Average (2-Years / 4-Semesters)",
-    Test_SMAPE: "nan%",
-    Train_SMAPE: "nan%",
-    Test_MAPE: "nan%",
-    Train_MAPE: "nan%",
-    Test_MAE: "21.4024",
-    Train_MAE: "8.1844",
-    Test_RMSE: "32.9691",
-    Train_RMSE: "15.5982",
-    Test_R2: "74.0270",
-    Train_R2: "97.6777",
+    Test_SMAPE: "30.12%",
+    Train_SMAPE: "7.53%",
+    Test_MAPE: "35.45%",
+    Train_MAPE: "7.60%",
+    Test_MAE: "32.7143",
+    Train_MAE: "9.7306",
+    Test_RMSE: "38.6253",
+    Train_RMSE: "19.1217",
+    Test_R2: "83.7959",
+    Train_R2: "98.5518",
   },
   {
     Algorithm: "Linear Regression",
-    Test_SMAPE: "89.77%",
-    Train_SMAPE: "nan%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "nan%",
-    Test_MAE: "40.7053",
+    Test_SMAPE: "96.78%",
+    Train_SMAPE: "0.00%",
+    Test_MAPE: "165.82%",
+    Train_MAPE: "0.00%",
+    Test_MAE: "65.4476",
     Train_MAE: "0.0000",
-    Test_RMSE: "63.4148",
+    Test_RMSE: "100.1894",
     Train_RMSE: "0.0000",
-    Test_R2: "3.9078",
+    Test_R2: "-143.2647",
     Train_R2: "100.0000",
   },
   {
     Algorithm: "KNN",
-    Test_SMAPE: "60.00%",
+    Test_SMAPE: "32.90%",
     Train_SMAPE: "0.00%",
-    Test_MAPE: "inf%",
+    Test_MAPE: "41.86%",
     Train_MAPE: "0.00%",
-    Test_MAE: "15.0537",
+    Test_MAE: "16.9654",
     Train_MAE: "0.0000",
-    Test_RMSE: "22.0257",
+    Test_RMSE: "23.5715",
     Train_RMSE: "0.0000",
-    Test_R2: "88.2476",
+    Test_R2: "86.5349",
     Train_R2: "100.0000",
   },
   {
-    Algorithm:
-      "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
-    Test_SMAPE: "45.08%",
-    Train_SMAPE: "28.67%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "10.3634",
-    Train_MAE: "6.3185",
-    Test_RMSE: "15.2544",
-    Train_RMSE: "14.4884",
-    Test_R2: "94.4397",
-    Train_R2: "97.9964",
+    Algorithm: "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
+    Test_SMAPE: "18.66%",
+    Train_SMAPE: "12.38%",
+    Test_MAPE: "39.50%",
+    Train_MAPE: "17.78%",
+    Test_MAE: "10.3500",
+    Train_MAE: "5.0622",
+    Test_RMSE: "15.3668",
+    Train_RMSE: "11.3975",
+    Test_R2: "94.2773",
+    Train_R2: "98.6619",
   },
 ];
+
 
 const thirdYearData = [
   {
     Algorithm: "XGBoost DART",
-    Test_SMAPE: "35.73%",
-    Train_SMAPE: "61.21%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "6.0389",
-    Train_MAE: "4.6741",
-    Test_RMSE: "9.4772",
-    Train_RMSE: "15.6499",
-    Test_R2: "98.4051",
-    Train_R2: "96.6448",
+    Test_SMAPE: "18.43%",
+    Train_SMAPE: "20.20%",
+    Test_MAPE: "32.56%",
+    Train_MAPE: "35.96%",
+    Test_MAE: "7.0878",
+    Train_MAE: "5.5062",
+    Test_RMSE: "9.8021",
+    Train_RMSE: "14.3784",
+    Test_R2: "98.3914",
+    Train_R2: "97.3055",
   },
   {
     Algorithm: "Random Forest",
-    Test_SMAPE: "39.34%",
-    Train_SMAPE: "68.93%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "6.3856",
-    Train_MAE: "7.7299",
-    Test_RMSE: "8.6894",
-    Train_RMSE: "23.8691",
-    Test_R2: "98.6592",
-    Train_R2: "92.1952",
+    Test_SMAPE: "23.07%",
+    Train_SMAPE: "30.85%",
+    Test_MAPE: "60.50%",
+    Train_MAPE: "92.85%",
+    Test_MAE: "7.9125",
+    Train_MAE: "9.7227",
+    Test_RMSE: "11.3719",
+    Train_RMSE: "23.0339",
+    Test_R2: "97.8349",
+    Train_R2: "93.0849",
   },
   {
     Algorithm: "Simple Exponential Smoothing",
-    Test_SMAPE: "54.19%",
-    Train_SMAPE: "92.11%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "10.8893",
-    Train_MAE: "20.4279",
-    Test_RMSE: "14.4304",
-    Train_RMSE: "52.6849",
-    Test_R2: "96.3022",
-    Train_R2: "64.8599",
+    Test_SMAPE: "35.69%",
+    Train_SMAPE: "19.92%",
+    Test_MAPE: "94.83%",
+    Train_MAPE: "33.96%",
+    Test_MAE: "12.4060",
+    Train_MAE: "11.9189",
+    Test_RMSE: "15.5783",
+    Train_RMSE: "29.1238",
+    Test_R2: "95.9370",
+    Train_R2: "89.7845",
   },
   {
     Algorithm: "Moving Average (2-Years / 4-Semesters)",
-    Test_SMAPE: "nan%",
-    Train_SMAPE: "nan%",
-    Test_MAPE: "nan%",
-    Train_MAPE: "nan%",
-    Test_MAE: "13.2439",
-    Train_MAE: "16.6308",
-    Test_RMSE: "18.1711",
-    Train_RMSE: "41.5461",
-    Test_R2: "94.1367",
-    Train_R2: "78.1481",
+    Test_SMAPE: "28.64%",
+    Train_SMAPE: "12.88%",
+    Test_MAPE: "26.59%",
+    Train_MAPE: "25.17%",
+    Test_MAE: "19.7222",
+    Train_MAE: "9.6709",
+    Test_RMSE: "21.5926",
+    Train_RMSE: "21.2786",
+    Test_R2: "96.3362",
+    Train_R2: "96.3917",
   },
   {
     Algorithm: "Linear Regression",
-    Test_SMAPE: "89.50%",
-    Train_SMAPE: "nan%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "nan%",
-    Test_MAE: "47.4761",
+    Test_SMAPE: "118.41%",
+    Train_SMAPE: "0.00%",
+    Test_MAPE: "297.69%",
+    Train_MAPE: "0.00%",
+    Test_MAE: "99.1901",
     Train_MAE: "0.0000",
-    Test_RMSE: "99.4524",
+    Test_RMSE: "201.4600",
     Train_RMSE: "0.0000",
-    Test_R2: "-75.6360",
+    Test_R2: "-579.4863",
     Train_R2: "100.0000",
   },
   {
     Algorithm: "KNN",
-    Test_SMAPE: "50.94%",
+    Test_SMAPE: "30.81%",
     Train_SMAPE: "0.00%",
-    Test_MAPE: "inf%",
+    Test_MAPE: "34.48%",
     Train_MAPE: "0.00%",
-    Test_MAE: "10.5115",
+    Test_MAE: "12.0206",
     Train_MAE: "0.0000",
-    Test_RMSE: "13.9605",
+    Test_RMSE: "15.0858",
     Train_RMSE: "0.0000",
-    Test_R2: "96.5392",
+    Test_R2: "96.1899",
     Train_R2: "100.0000",
   },
   {
-    Algorithm:
-      "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
-    Test_SMAPE: "39.57%",
-    Train_SMAPE: "63.21%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "5.9214",
-    Train_MAE: "8.2998",
-    Test_RMSE: "7.5771",
-    Train_RMSE: "25.9290",
-    Test_R2: "98.9805",
-    Train_R2: "91.4886",
+    Algorithm: "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
+    Test_SMAPE: "21.06%",
+    Train_SMAPE: "14.20%",
+    Test_MAPE: "50.91%",
+    Train_MAPE: "23.32%",
+    Test_MAE: "7.1224",
+    Train_MAE: "7.8888",
+    Test_RMSE: "9.2598",
+    Train_RMSE: "18.3376",
+    Test_R2: "98.5645",
+    Train_R2: "95.9501",
   },
 ];
+
 
 const fourthYearData = [
   {
     Algorithm: "XGBoost DART",
-    Test_SMAPE: "46.28%",
-    Train_SMAPE: "76.99%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "17.4242",
-    Train_MAE: "6.6755",
-    Test_RMSE: "45.7607",
-    Train_RMSE: "20.6185",
-    Test_R2: "66.3200",
-    Train_R2: "90.7643",
+    Test_SMAPE: "40.23%",
+    Train_SMAPE: "31.27%",
+    Test_MAPE: "125.02%",
+    Train_MAPE: "74.98%",
+    Test_MAE: "19.8159",
+    Train_MAE: "10.7263",
+    Test_RMSE: "47.3367",
+    Train_RMSE: "28.2215",
+    Test_R2: "63.7539",
+    Train_R2: "87.5069",
   },
   {
     Algorithm: "Random Forest",
-    Test_SMAPE: "47.48%",
-    Train_SMAPE: "83.88%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "21.2188",
-    Train_MAE: "10.6542",
-    Test_RMSE: "48.9459",
-    Train_RMSE: "31.6831",
-    Test_R2: "61.4683",
-    Train_R2: "78.1921",
+    Test_SMAPE: "50.04%",
+    Train_SMAPE: "44.40%",
+    Test_MAPE: "219.79%",
+    Train_MAPE: "169.88%",
+    Test_MAE: "23.7482",
+    Train_MAE: "18.0796",
+    Test_RMSE: "47.3126",
+    Train_RMSE: "39.8729",
+    Test_R2: "63.7908",
+    Train_R2: "75.0617",
   },
   {
     Algorithm: "Simple Exponential Smoothing",
-    Test_SMAPE: "75.98%",
-    Train_SMAPE: "104.09%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "27.0176",
-    Train_MAE: "17.4410",
-    Test_RMSE: "55.3795",
-    Train_RMSE: "44.2616",
-    Test_R2: "51.6500",
-    Train_R2: "61.7447",
+    Test_SMAPE: "50.43%",
+    Train_SMAPE: "24.38%",
+    Test_MAPE: "136.63%",
+    Train_MAPE: "69.41%",
+    Test_MAE: "28.3846",
+    Train_MAE: "13.3366",
+    Test_RMSE: "56.6267",
+    Train_RMSE: "38.2312",
+    Test_R2: "50.6673",
+    Train_R2: "79.1199",
   },
   {
     Algorithm: "Moving Average (2-Years / 4-Semesters)",
-    Test_SMAPE: "70.98%",
-    Train_SMAPE: "nan%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "nan%",
-    Test_MAE: "29.0321",
-    Train_MAE: "14.0408",
-    Test_RMSE: "60.3772",
-    Train_RMSE: "33.6077",
-    Test_R2: "42.5296",
-    Train_R2: "77.9446",
+    Test_SMAPE: "39.67%",
+    Train_SMAPE: "14.92%",
+    Test_MAPE: "31.81%",
+    Train_MAPE: "49.15%",
+    Test_MAE: "49.1667",
+    Train_MAE: "9.7708",
+    Test_RMSE: "102.5599",
+    Train_RMSE: "29.3382",
+    Test_R2: "29.8100",
+    Train_R2: "80.9465",
   },
   {
     Algorithm: "Linear Regression",
-    Test_SMAPE: "154.99%",
-    Train_SMAPE: "nan%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "nan%",
-    Test_MAE: "238.3645",
+    Test_SMAPE: "98.04%",
+    Train_SMAPE: "0.00%",
+    Test_MAPE: "198.41%",
+    Train_MAPE: "0.00%",
+    Test_MAE: "50.8715",
     Train_MAE: "0.0000",
-    Test_RMSE: "908.7180",
+    Test_RMSE: "97.6989",
     Train_RMSE: "0.0000",
-    Test_R2: "-12918.3712",
+    Test_R2: "-46.8494",
     Train_R2: "100.0000",
   },
   {
     Algorithm: "KNN",
-    Test_SMAPE: "65.73%",
+    Test_SMAPE: "51.05%",
     Train_SMAPE: "0.00%",
-    Test_MAPE: "inf%",
+    Test_MAPE: "130.84%",
     Train_MAPE: "0.00%",
-    Test_MAE: "20.8987",
+    Test_MAE: "25.1877",
     Train_MAE: "0.0000",
-    Test_RMSE: "48.5275",
+    Test_RMSE: "52.0819",
     Train_RMSE: "0.0000",
-    Test_R2: "62.1242",
+    Test_R2: "56.1229",
     Train_R2: "100.0000",
   },
   {
-    Algorithm:
-      "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
-    Test_SMAPE: "50.88%",
-    Train_SMAPE: "79.46%",
-    Test_MAPE: "inf%",
-    Train_MAPE: "inf%",
-    Test_MAE: "20.2598",
-    Train_MAE: "10.0076",
-    Test_RMSE: "47.1980",
-    Train_RMSE: "29.4513",
-    Test_R2: "64.8808",
-    Train_R2: "83.0626",
+    Algorithm: "Ensemble (Simple Exponential Smoothing + Random Forest + XGBoost DART)",
+    Test_SMAPE: "41.73%",
+    Train_SMAPE: "25.65%",
+    Test_MAPE: "135.08%",
+    Train_MAPE: "76.15%",
+    Test_MAE: "23.1027",
+    Train_MAE: "13.8772",
+    Test_RMSE: "48.9615",
+    Train_RMSE: "33.3665",
+    Test_R2: "63.1191",
+    Train_R2: "84.0956",
   },
 ];
+
 
 function Dashboard() {
   const [testSortConfigFirstYear, setTestSortConfigFirstYear] = useState({
@@ -573,490 +573,390 @@ function Dashboard() {
         })}
       </div>
 
-      {/** ---------------------- Different charts ------------------------- */}
-      {/* <div className="grid lg:grid-cols-2 mt-4 grid-cols-1 gap-6">
-                <LineChart />
-                <BarChart />
-            </div> */}
+      {/** ---------------------- Metrics tables and description ------------------------- */}
+      <div className="flex mt-10">
+        {/* Sticky metrics description card */}
+        <div className="w-1/4 sticky top-0 self-start mr-4" style={{maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto'}}>
+          <MetricsDescriptionCard />
+        </div>
 
-      {/** ---------------------- Different stats content 2 ------------------------- */}
-      {/* <div className="grid lg:grid-cols-2 mt-10 grid-cols-1 gap-6">
-                <AmountStats />
-                <PageStats />
-            </div> */}
-
-      {/** ---------------------- 1st Year ------------------------- */}
-      <div className="mt-10">
-        <TitleCard title="1st Year" topMargin="mt-2">
-          <div className="overflow-x-auto">
-            <table className="table w-full">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFirstYear("Algorithm")}
-                  >
-                    Forecasting Algorithm
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFirstYear("Test_SMAPE")}
-                  >
-                    Test SMAPE
-                    {testSortConfigFirstYear.key === "Test_SMAPE" &&
-                      (testSortConfigFirstYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFirstYear("Test_MAPE")}
-                  >
-                    Test MAPE
-                    {testSortConfigFirstYear.key === "Test_MAPE" &&
-                      (testSortConfigFirstYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFirstYear("Test_MAE")}
-                  >
-                    Test MAE
-                    {testSortConfigFirstYear.key === "Test_MAE" &&
-                      (testSortConfigFirstYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFirstYear("Test_RMSE")}
-                  >
-                    Test RMSE
-                    {testSortConfigFirstYear.key === "Test_RMSE" &&
-                      (testSortConfigFirstYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFirstYear("Test_R2")}
-                  >
-                    Test R2
-                    {testSortConfigFirstYear.key === "Test_R2" &&
-                      (testSortConfigFirstYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedFirstYearData.map((u, k) => (
-                  <tr key={k}>
-                    <th>{k + 1}</th>
-                    <td>{u.Algorithm}</td>
-                    <td>{u.Test_SMAPE}</td>
-                    <td>{u.Test_MAPE}</td>
-                    <td>{u.Test_MAE}</td>
-                    <td>{u.Test_RMSE}</td>
-                    <td>{u.Test_R2}</td>
+        {/* Metrics tables */}
+        <div className="w-3/4">
+          {/** ---------------------- 1st Year ------------------------- */}
+          <TitleCard title="1st Year" topMargin="mt-2">
+            <div className="overflow-x-auto">
+              <table className="table w-full">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th
+                      className="cursor-pointer normal-case"
+                      onClick={() => handleTestSortFirstYear("Algorithm")}
+                    >
+                      Forecasting Algorithm
+                    </th>
+                    <th
+                      className="cursor-pointer normal-case"
+                      onClick={() => handleTestSortFirstYear("Test_SMAPE")}
+                    >
+                      Test SMAPE
+                      {testSortConfigFirstYear.key === "Test_SMAPE" &&
+                        (testSortConfigFirstYear.direction === "asc" ? (
+                          <ChevronUpIcon className="w-5 h-5 ml-2" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5 ml-2" />
+                        ))}
+                    </th>
+                    <th
+                      className="cursor-pointer normal-case"
+                      onClick={() => handleTestSortFirstYear("Test_MAPE")}
+                    >
+                      Test MAPE
+                      {testSortConfigFirstYear.key === "Test_MAPE" &&
+                        (testSortConfigFirstYear.direction === "asc" ? (
+                          <ChevronUpIcon className="w-5 h-5 ml-2" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5 ml-2" />
+                        ))}
+                    </th>
+                    <th
+                      className="cursor-pointer normal-case"
+                      onClick={() => handleTestSortFirstYear("Test_MAE")}
+                    >
+                      Test MAE
+                      {testSortConfigFirstYear.key === "Test_MAE" &&
+                        (testSortConfigFirstYear.direction === "asc" ? (
+                          <ChevronUpIcon className="w-5 h-5 ml-2" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5 ml-2" />
+                        ))}
+                    </th>
+                    <th
+                      className="cursor-pointer normal-case"
+                      onClick={() => handleTestSortFirstYear("Test_RMSE")}
+                    >
+                      Test RMSE
+                      {testSortConfigFirstYear.key === "Test_RMSE" &&
+                        (testSortConfigFirstYear.direction === "asc" ? (
+                          <ChevronUpIcon className="w-5 h-5 ml-2" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5 ml-2" />
+                        ))}
+                    </th>
+                    <th
+                      className="cursor-pointer normal-case"
+                      onClick={() => handleTestSortFirstYear("Test_R2")}
+                    >
+                      Test R2
+                      {testSortConfigFirstYear.key === "Test_R2" &&
+                        (testSortConfigFirstYear.direction === "asc" ? (
+                          <ChevronUpIcon className="w-5 h-5 ml-2" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5 ml-2" />
+                        ))}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sortedFirstYearData.map((u, k) => (
+                    <tr key={k}>
+                      <th>{k + 1}</th>
+                      <td>{u.Algorithm}</td>
+                      <td>{u.Test_SMAPE}</td>
+                      <td>{u.Test_MAPE}</td>
+                      <td>{u.Test_MAE}</td>
+                      <td>{u.Test_RMSE}</td>
+                      <td>{u.Test_R2}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </TitleCard>
+
+          {/** ---------------------- 2nd Year ------------------------- */}
+          <div className="mt-10">
+            <TitleCard title="2nd Year" topMargin="mt-2">
+              <div className="overflow-x-auto">
+                <table className="table w-full">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortSecondYear("Algorithm")}
+                      >
+                        Forecasting Algorithm
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortSecondYear("Test_SMAPE")}
+                      >
+                        Test SMAPE
+                        {testSortConfigSecondYear.key === "Test_SMAPE" &&
+                          (testSortConfigSecondYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortSecondYear("Test_MAPE")}
+                      >
+                        Test MAPE
+                        {testSortConfigSecondYear.key === "Test_MAPE" &&
+                          (testSortConfigSecondYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortSecondYear("Test_MAE")}
+                      >
+                        Test MAE
+                        {testSortConfigSecondYear.key === "Test_MAE" &&
+                          (testSortConfigSecondYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortSecondYear("Test_RMSE")}
+                      >
+                        Test RMSE
+                        {testSortConfigSecondYear.key === "Test_RMSE" &&
+                          (testSortConfigSecondYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortSecondYear("Test_R2")}
+                      >
+                        Test R2
+                        {testSortConfigSecondYear.key === "Test_R2" &&
+                          (testSortConfigSecondYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedSecondYearData.map((u, k) => (
+                      <tr key={k}>
+                        <th>{k + 1}</th>
+                        <td>{u.Algorithm}</td>
+                        <td>{u.Test_SMAPE}</td>
+                        <td>{u.Test_MAPE}</td>
+                        <td>{u.Test_MAE}</td>
+                        <td>{u.Test_RMSE}</td>
+                        <td>{u.Test_R2}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </TitleCard>
           </div>
-        </TitleCard>
+
+          {/** ---------------------- 3rd Year ------------------------- */}
+          <div className="mt-10">
+            <TitleCard title="3rd Year" topMargin="mt-2">
+              <div className="overflow-x-auto">
+                <table className="table w-full">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortThirdYear("Algorithm")}
+                      >
+                        Forecasting Algorithm
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortThirdYear("Test_SMAPE")}
+                      >
+                        Test SMAPE
+                        {testSortConfigThirdYear.key === "Test_SMAPE" &&
+                          (testSortConfigThirdYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortThirdYear("Test_MAPE")}
+                      >
+                        Test MAPE
+                        {testSortConfigThirdYear.key === "Test_MAPE" &&
+                          (testSortConfigThirdYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortThirdYear("Test_MAE")}
+                      >
+                        Test MAE
+                        {testSortConfigThirdYear.key === "Test_MAE" &&
+                          (testSortConfigThirdYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortThirdYear("Test_RMSE")}
+                      >
+                        Test RMSE
+                        {testSortConfigThirdYear.key === "Test_RMSE" &&
+                          (testSortConfigThirdYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortThirdYear("Test_R2")}
+                      >
+                        Test R2
+                        {testSortConfigThirdYear.key === "Test_R2" &&
+                          (testSortConfigThirdYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedThirdYearData.map((u, k) => (
+                      <tr key={k}>
+                        <th>{k + 1}</th>
+                        <td>{u.Algorithm}</td>
+                        <td>{u.Test_SMAPE}</td>
+                        <td>{u.Test_MAPE}</td>
+                        <td>{u.Test_MAE}</td>
+                        <td>{u.Test_RMSE}</td>
+                        <td>{u.Test_R2}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </TitleCard>
+          </div>
+
+          {/** ---------------------- 4th Year ------------------------- */}
+          <div className="mt-10">
+            <TitleCard title="4th Year" topMargin="mt-2">
+              <div className="overflow-x-auto">
+                <table className="table w-full">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortFourthYear("Algorithm")}
+                      >
+                        Forecasting Algorithm
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortFourthYear("Test_SMAPE")}
+                      >
+                        Test SMAPE
+                        {tesSortConfigFourthYear.key === "Test_SMAPE" &&
+                          (tesSortConfigFourthYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortFourthYear("Test_MAPE")}
+                      >
+                        Test MAPE
+                        {tesSortConfigFourthYear.key === "Test_MAPE" &&
+                          (tesSortConfigFourthYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortFourthYear("Test_MAE")}
+                      >
+                        Test MAE
+                        {tesSortConfigFourthYear.key === "Test_MAE" &&
+                          (tesSortConfigFourthYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortFourthYear("Test_RMSE")}
+                      >
+                        Test RMSE
+                        {tesSortConfigFourthYear.key === "Test_RMSE" &&
+                          (tesSortConfigFourthYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                      <th
+                        className="cursor-pointer normal-case"
+                        onClick={() => handleTestSortFourthYear("Test_R2")}
+                      >
+                        Test R2
+                        {tesSortConfigFourthYear.key === "Test_R2" &&
+                          (tesSortConfigFourthYear.direction === "asc" ? (
+                            <ChevronUpIcon className="w-5 h-5 ml-2" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 ml-2" />
+                          ))}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedFourthYearData.map((u, k) => (
+                      <tr key={k}>
+                        <th>{k + 1}</th>
+                        <td>{u.Algorithm}</td>
+                        <td>{u.Test_SMAPE}</td>
+                        <td>{u.Test_MAPE}</td>
+                        <td>{u.Test_MAE}</td>
+                        <td>{u.Test_RMSE}</td>
+                        <td>{u.Test_R2}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </TitleCard>
+          </div>
+        </div>
       </div>
-
-      {/** ---------------------- 2nd Year ------------------------- */}
-
-      <div className="mt-10">
-        <TitleCard title="2nd Year" topMargin="mt-2">
-          <div className="overflow-x-auto">
-            <table className="table w-full">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortSecondYear("Algorithm")}
-                  >
-                    Forecasting Algorithm
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortSecondYear("Test_SMAPE")}
-                  >
-                    Test SMAPE
-                    {testSortConfigSecondYear.key === "Test_SMAPE" &&
-                      (testSortConfigSecondYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortSecondYear("Test_MAPE")}
-                  >
-                    Test MAPE
-                    {testSortConfigSecondYear.key === "Test_MAPE" &&
-                      (testSortConfigSecondYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortSecondYear("Test_MAE")}
-                  >
-                    Test MAE
-                    {testSortConfigSecondYear.key === "Test_MAE" &&
-                      (testSortConfigSecondYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortSecondYear("Test_RMSE")}
-                  >
-                    Test RMSE
-                    {testSortConfigSecondYear.key === "Test_RMSE" &&
-                      (testSortConfigSecondYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortSecondYear("Test_R2")}
-                  >
-                    Test R2
-                    {testSortConfigSecondYear.key === "Test_R2" &&
-                      (testSortConfigSecondYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedSecondYearData.map((u, k) => (
-                  <tr key={k}>
-                    <th>{k + 1}</th>
-                    <td>{u.Algorithm}</td>
-                    <td>{u.Test_SMAPE}</td>
-                    <td>{u.Test_MAPE}</td>
-                    <td>{u.Test_MAE}</td>
-                    <td>{u.Test_RMSE}</td>
-                    <td>{u.Test_R2}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TitleCard>
-      </div>
-
-      {/** ---------------------- 3rd Year ------------------------- */}
-      <div className="mt-10">
-        <TitleCard title="3rd Year" topMargin="mt-2">
-          <div className="overflow-x-auto">
-            <table className="table w-full">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortThirdYear("Algorithm")}
-                  >
-                    Forecasting Algorithm
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortThirdYear("Test_SMAPE")}
-                  >
-                    Test SMAPE
-                    {testSortConfigThirdYear.key === "Test_SMAPE" &&
-                      (testSortConfigThirdYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortThirdYear("Test_MAPE")}
-                  >
-                    Test MAPE
-                    {testSortConfigThirdYear.key === "Test_MAPE" &&
-                      (testSortConfigThirdYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortThirdYear("Test_MAE")}
-                  >
-                    Test MAE
-                    {testSortConfigThirdYear.key === "Test_MAE" &&
-                      (testSortConfigThirdYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortThirdYear("Test_RMSE")}
-                  >
-                    Test RMSE
-                    {testSortConfigThirdYear.key === "Test_RMSE" &&
-                      (testSortConfigThirdYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortThirdYear("Test_R2")}
-                  >
-                    Test R2
-                    {testSortConfigThirdYear.key === "Test_R2" &&
-                      (testSortConfigThirdYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedThirdYearData.map((u, k) => (
-                  <tr key={k}>
-                    <th>{k + 1}</th>
-                    <td>{u.Algorithm}</td>
-                    <td>{u.Test_SMAPE}</td>
-                    <td>{u.Test_MAPE}</td>
-                    <td>{u.Test_MAE}</td>
-                    <td>{u.Test_RMSE}</td>
-                    <td>{u.Test_R2}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TitleCard>
-      </div>
-
-      {/** ---------------------- 4th Year ------------------------- */}
-
-      <div className="mt-10">
-        <TitleCard title="4th Year" topMargin="mt-2">
-          <div className="overflow-x-auto">
-            <table className="table w-full">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFourthYear("Algorithm")}
-                  >
-                    Forecasting Algorithm
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFourthYear("Test_SMAPE")}
-                  >
-                    Test SMAPE
-                    {tesSortConfigFourthYear.key === "Test_SMAPE" &&
-                      (tesSortConfigFourthYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFourthYear("Test_MAPE")}
-                  >
-                    Test MAPE
-                    {tesSortConfigFourthYear.key === "Test_MAPE" &&
-                      (tesSortConfigFourthYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFourthYear("Test_MAE")}
-                  >
-                    Test MAE
-                    {tesSortConfigFourthYear.key === "Test_MAE" &&
-                      (tesSortConfigFourthYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFourthYear("Test_RMSE")}
-                  >
-                    Test RMSE
-                    {tesSortConfigFourthYear.key === "Test_RMSE" &&
-                      (tesSortConfigFourthYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTestSortFourthYear("Test_R2")}
-                  >
-                    Test R2
-                    {tesSortConfigFourthYear.key === "Test_R2" &&
-                      (tesSortConfigFourthYear.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedFourthYearData.map((u, k) => (
-                  <tr key={k}>
-                    <th>{k + 1}</th>
-                    <td>{u.Algorithm}</td>
-                    <td>{u.Test_SMAPE}</td>
-                    <td>{u.Test_MAPE}</td>
-                    <td>{u.Test_MAE}</td>
-                    <td>{u.Test_RMSE}</td>
-                    <td>{u.Test_R2}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TitleCard>
-      </div>
-
-      {/** ---------------------- 4th Year ------------------------- */}
-
-      {/* <div className="mt-10">
-        <TitleCard title="Split Data" topMargin="mt-2">
-          <div className="overflow-x-auto">
-            <table className="table w-full">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Algorithm")}
-                  >
-                    Forecasting Algorithm
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_SMAPE")}
-                  >
-                    Test  SMAPE
-                    {trainSortConfig.key === "Train_SMAPE" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_MAPE")}
-                  >
-                    Test  MAPE
-                    {trainSortConfig.key === "Train_MAPE" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_MAE")}
-                  >
-                    Test  MAE
-                    {trainSortConfig.key === "Train_MAE" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_RMSE")}
-                  >
-                    Test  RMSE
-                    {trainSortConfig.key === "Train_RMSE" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                  <th
-                    className="cursor-pointer normal-case"
-                    onClick={() => handleTrainSort("Train_R2")}
-                  >
-                    Test  R2
-                    {trainSortConfig.key === "Train_R2" &&
-                      (trainSortConfig.direction === "asc" ? (
-                        <ChevronUpIcon className="w-5 h-5 ml-2" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 ml-2" />
-                      ))}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedSplitData.map((u, k) => (
-                  <tr key={k}>
-                    <th>{k + 1}</th>
-                    <td>{u.Algorithm}</td>
-                    <td>{u.Train_SMAPE}</td>
-                    <td>{u.Train_MAPE}</td>
-                    <td>{u.Train_MAE}</td>
-                    <td>{u.Train_RMSE}</td>
-                    <td>{u.Train_R2}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TitleCard>
-      </div> */}
     </>
   );
 }

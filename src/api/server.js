@@ -36,17 +36,11 @@ const validate = (req, res, next) => {
   }
   next();
 };
+
+
 // Endpoint for dashboard stats
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
-    // Create a new pool
-    const pool = new Pool({
-      user: process.env.DB_USER,
-      host: process.env.DB_HOST,
-      database: process.env.DB_NAME,
-      password: process.env.DB_PASSWORD,
-      port: process.env.DB_PORT,
-    });
 
     // Query for enrollment data
     const enrollmentQuery = `
@@ -152,6 +146,162 @@ app.get("/api/dashboard-stats", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+
+app.get("/api/dashboard-selected-stats", async (req, res) => {
+  try {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth(); // + 1 JavaScript months are 0-indexed
+
+
+    var { selectedYear, selectedSemester, selectedDepartment } = req.query;
+    
+    if (!selectedYear || !selectedSemester) {
+      return res.status(400).json({ error: "Year and semester are required" });
+    }
+
+    
+    selectedYear = parseInt(selectedYear);
+    selectedSemester = parseInt(selectedSemester);
+
+    if (selectedSemester === 2) {
+      enrollmentYear = selectedYear
+      enrollmentSemester = 1;
+    } else if (selectedSemester === 1) {
+      enrollmentYear = selectedYear - 1
+      enrollmentSemester = 2;
+    }
+
+
+    // Query for applicants
+    let applicantsQuery;
+    let applicantsQueryParams;
+    
+    
+    if (selectedDepartment) {
+      applicantsQuery = `
+        SELECT SUM("Number_of_Applicants") as total_applicants
+          FROM admission
+          WHERE "Start_Year" = $1 
+            AND "Department" = $2;
+      `;
+      applicantsQueryParams = [selectedYear, selectedDepartment];
+    } else {
+      const departmentsQuery = `
+        SELECT DISTINCT "Department"
+          FROM processed_factors
+          ORDER BY "Department";
+      `;
+      const departments = await pool.query(departmentsQuery);
+
+      applicantsQuery = `
+        SELECT SUM("Number_of_Applicants") as total_applicants
+          FROM admission
+          WHERE "Start_Year" = $1
+            AND "Department" IN (${departments.rows.map(dept => `'${dept.Department}'`).join(', ')});
+      `;
+      applicantsQueryParams = [selectedYear];
+    }
+
+
+    const admissionResult = await pool.query(applicantsQuery, applicantsQueryParams);
+    console.log("admissionnn", admissionResult)
+
+
+    
+    // Query for enrollment data based on year and semester
+    const enrollmentQuery = `
+      SELECT "Start_Year", "Semester", SUM("1st_Year" + "2nd_Year" + "3rd_Year" + "4th_Year" + "5th_Year") as total
+      FROM enrollment
+      WHERE "Start_Year" = $1 AND "Semester" = $2
+      GROUP BY "Start_Year", "Semester";
+    `;
+
+    const enrollmentResult = await pool.query(enrollmentQuery, [enrollmentYear, enrollmentSemester]);
+
+
+    
+    // Query for inflation rate from the past year based on the given year
+    const inflationQuery = `
+      SELECT "Start_Year", "Inflation_Rate"
+      FROM inflation_rate
+      WHERE "Start_Year" = $1 - 1
+      LIMIT 1;
+    `;
+    const inflationResult = await pool.query(inflationQuery, [selectedYear]);
+    // Query for HFCE
+    const hfceQuery = `
+      SELECT 
+        "Start_Year", 
+        AVG("HFCE_Education") as "HFCE_Education", 
+        AVG("HFCE") as "HFCE"
+      FROM hfce
+      WHERE "Start_Year" = $1
+      GROUP BY "Start_Year"
+    `;
+    const hfceResult = await pool.query(hfceQuery, [selectedYear]);
+    
+
+    // Modify your CPI query to use cpiEndMonth
+    const cpiQuery = `
+      WITH cpi_data AS (
+        SELECT "Year", "Month", "CPI_Region3"
+        FROM cpi_education
+        WHERE "Month" != 'Ave' AND "Year" = $1
+      )
+      SELECT 
+        "Year",
+        ROUND(AVG("CPI_Region3")::numeric, 2) AS "Average_CPI_Region3"
+      FROM cpi_data
+      GROUP BY "Year"
+    `;
+
+    const cpiResult = await pool.query(cpiQuery, [selectedYear]);
+
+    
+
+
+    // Construct the response
+    const dashboardStats = {
+      admission: {
+        year: selectedYear,
+        department: selectedDepartment || 'HAU',
+        number_of_applicants: parseInt(admissionResult.rows[0].total_applicants),
+      },
+      enrollment: {
+        year: parseInt(enrollmentResult.rows[0].Start_Year),
+        semester: enrollmentResult.rows[0].Semester == 1 ? "1st" : "2nd",
+        total: parseInt(enrollmentResult.rows[0].total),
+      },
+      inflation: {
+        year: inflationResult.rows[0].Start_Year, // Previous year's inflation
+        rate: parseFloat(inflationResult.rows[0].Inflation_Rate),
+      },
+      hfce: {
+        year: hfceResult.rows[0].Start_Year,
+        value: parseInt(hfceResult.rows[0].HFCE),
+        quarter: `1st-${['1st', '2nd', '3rd', '4th'][hfceResult.rows[0].max_quarter - 1]} Quarter Average`,
+      },
+
+      cpi: {
+        year: selectedYear,
+        value: parseFloat(cpiResult.rows[0].Average_CPI_Region3),
+        region: "Region 3",
+      },
+    };
+
+    res.json(dashboardStats);
+    } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+    res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+
+
 app.get(
   "/api/transactions",
   [
@@ -160,11 +310,6 @@ app.get(
     query("startYear").optional().isInt(),
     query("startYear_1").optional().isInt(),
     query("major").optional().isString().trim().escape(),
-    query("firstYear").optional().isInt(),
-    query("secondYear").optional().isInt(),
-    query("thirdYear").optional().isInt(),
-    query("fourthYear").optional().isInt(),
-    query("fifthYear").optional().isInt(),
   ],
   validate,
   async (req, res) => {
@@ -177,11 +322,6 @@ app.get(
         startYear_1,
         semester,
         major,
-        firstYear,
-        secondYear,
-        thirdYear,
-        fourthYear,
-        fifthYear,
       } = req.query;
 
       // Start with the base query
@@ -192,7 +332,7 @@ app.get(
       const conditions = [];
       const values = [];
 
-      // Check if department parameter is present
+      // // Check if department parameter is present
       if (department) {
         const departments = department.split(",");
         const departmentConditions = departments.map((_, index) => `"Department" = $${values.length + index + 1}`);
@@ -200,13 +340,6 @@ app.get(
         values.push(...departments);
       }
 
-      // Check if search parameter is present
-      if (search) {
-        conditions.push(
-          `("Major" ILIKE $${values.length + 1} OR "Semester" ILIKE $${values.length + 1})`
-        );
-        values.push(`%${search}%`);
-      }
 
       // Check if startYear parameter is present
       if (startYear) {
@@ -223,7 +356,6 @@ app.get(
       // Check if semester parameter is present and is an array
       if (semester) {
         const semesters = semester.split(',').map(s => s.trim());
-       console.log(semester)
         const placeholders = semesters.map((_, index) => `$${values.length + index + 1}`).join(', ');
         conditions.push(`"Semester" IN (${placeholders})`);
         values.push(...semesters);
@@ -235,36 +367,6 @@ app.get(
         const majorConditions = majors.map((_, index) => `"Major" = $${values.length + index + 1}`);
         conditions.push(`(${majorConditions.join(" OR ")})`);
         values.push(...majors);
-      }
-
-      // Check if firstYear parameter is present
-      if (firstYear) {
-        conditions.push(`"1st_Year" = $${values.length + 1}`);
-        values.push(parseInt(firstYear, 10));
-      }
-
-      // Check if secondYear parameter is present
-      if (secondYear) {
-        conditions.push(`"2nd_Year" = $${values.length + 1}`);
-        values.push(parseInt(secondYear, 10));
-      }
-
-      // Check if thirdYear parameter is present
-      if (thirdYear) {
-        conditions.push(`"3rd_Year" = $${values.length + 1}`);
-        values.push(parseInt(thirdYear, 10));
-      }
-
-      // Check if fourthYear parameter is present
-      if (fourthYear) {
-        conditions.push(`"4th_Year" = $${values.length + 1}`);
-        values.push(parseInt(fourthYear, 10));
-      }
-
-      // Check if fifthYear parameter is present
-      if (fifthYear) {
-        conditions.push(`"5th_Year" = $${values.length + 1}`);
-        values.push(parseInt(fifthYear, 10));
       }
 
       // Append conditions to the query if any
@@ -341,7 +443,6 @@ app.get("/api/transactions/majors", async (req, res) => {
     };
 
     const result = await pool.query(query);
-    console.log(result, "resulttttt");
     res.json(result.rows);
   } catch (err) {
     console.error("Error occurred:", err);
@@ -546,16 +647,24 @@ app.post(
   }
 );
 
+
 app.get(
   "/api/leads",
   [
     query("department").optional().isString().trim().escape(),
     query("search").optional().isString().trim().escape(),
+    query("start_year").optional().isInt(),
+    query("end_year").optional().isInt(),
   ],
   validate,
   async (req, res) => {
-    const { department, search } = req.query;
+    const { department, search, start_year, end_year } = req.query;
     try {
+      let conditions = [];
+      let values = [start_year, end_year];
+      let paramCounter = 2;
+
+      // Base query
       let query = `
         SELECT DISTINCT
           "Start_Year",
@@ -566,24 +675,43 @@ app.get(
           ROUND(CAST("HFCE" AS NUMERIC), 2) AS "Overall_HFCE",
           ROUND(CAST("Inflation_Rate_lag_1" AS NUMERIC), 2) as "Inflation_Rate_Past"
         FROM processed_factors
-        WHERE "Start_Year" >= 2018
-        ${department ? 'AND "Department" = $1' : ""}
-        ${search ? `
-          AND (
-            "Department" ILIKE $2 OR
-            "CPI_Region3"::TEXT ILIKE $2 OR
-            "HFCE_Education"::TEXT ILIKE $2 OR
-            "HFCE"::TEXT ILIKE $2 OR
-            "Inflation_Rate_lag_1"::TEXT ILIKE $2
-          )
-        ` : ""}
-        ORDER BY "Start_Year" ASC, "Department" ASC
+        WHERE "Start_Year" >= $1 AND "Start_Year" <= $2
       `;
 
+      // Handle multiple departments
+      if (department) {
+        const departments = department.split(",");
+        const departmentConditions = departments.map((_, index) => {
+          paramCounter++;
+          return `"Department" = $${paramCounter}`;
+        });
+        conditions.push(`(${departmentConditions.join(" OR ")})`);
+        values.push(...departments);
+      }
 
-      const values = [];
-      if (department) values.push(department);
-      if (search) values.push(`%${search}%`);
+      // Handle search
+      if (search) {
+        paramCounter++;
+        conditions.push(`(
+          "Department" ILIKE $${paramCounter} OR
+          "CPI_Region3"::TEXT ILIKE $${paramCounter} OR
+          "HFCE_Education"::TEXT ILIKE $${paramCounter} OR
+          "HFCE"::TEXT ILIKE $${paramCounter} OR
+          "Inflation_Rate_lag_1"::TEXT ILIKE $${paramCounter}
+        )`);
+        values.push(`%${search}%`);
+      }
+
+      // Add conditions to query
+      if (conditions.length > 0) {
+        query += ` AND ${conditions.join(" AND ")}`;
+      }
+
+      // Add ordering
+      query += ` ORDER BY "Start_Year" ASC, "Department" ASC`;
+
+      console.log("Executing query:", query);
+      console.log("With values:", values);
 
       const result = await pool.query(query, values);
       res.json(result.rows);
@@ -593,6 +721,26 @@ app.get(
     }
   }
 );
+
+app.get('/api/leads/lowest-year',
+  async (req, res) => {
+    try {
+      const result = await pool.query('SELECT MIN("Start_Year") as lowest_year FROM processed_factors');
+      console.log(result.rows[0], result.rows[0])
+      if (result.rows.length > 0 && result.rows[0].lowest_year) {
+        res.json({ lowestYear: result.rows[0].lowest_year });
+      } else {
+        res.status(404).json({ error: 'No data found' });
+      }
+    } catch (error) {
+      console.error('Error fetching lowest year:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+
+
 
 // Login endpoint
 app.post(
@@ -630,6 +778,7 @@ app.post(
     }
   }
 );
+
 
 // New route to get the latest data year
 app.get("/api/latest-data-year", async (req, res) => {
@@ -775,7 +924,6 @@ app.post(
       };
 
       const result = await pool.query(query);
-
       if (result.rows.length === 0) {
         return res
           .status(404)
@@ -792,6 +940,33 @@ app.post(
     }
   }
 );
+
+// Add this new endpoint near your other API routes
+app.get("/api/latest-school-year-semester", async (req, res) => {
+  try {
+    const query = `
+      SELECT "Start_Year", "Semester"
+      FROM enrollment
+      ORDER BY "Start_Year" DESC, "Semester" DESC
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query);
+
+    if (result.rows.length > 0) {
+      const { Start_Year, Semester } = result.rows[0];
+      res.json({
+        latestYear: Start_Year,
+        latestSemester: Semester
+      });
+    } else {
+      res.status(404).json({ error: "No data found" });
+    }
+  } catch (err) {
+    console.error("Error fetching latest school year and semester:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 app.listen(process.env.PORT || 5000, () => {
   console.log(`Server is running on port ${process.env.PORT || 5000}`);

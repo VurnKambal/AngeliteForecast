@@ -20,6 +20,8 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
     thirdYear: "",
     fourthYear: "",
     fifthYear: "",
+    gradeEleven: "",
+    gradeTwelve: "",
   });
   const [searchText, setSearchText] = useState("");
   const locationFilters = [
@@ -42,7 +44,6 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
       ...filterParams,
       department: department,
     });
-    console.log(`Filter applied: ${department}`);
   };
 
   const removeAppliedFilter = () => {
@@ -59,10 +60,11 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
       thirdYear: "",
       fourthYear: "",
       fifthYear: "",
+      gradeEleven: "",
+      gradeTwelve: "",
     });
     setSearchText("");
     removeFilter();
-    console.log("Filter and search reset");
   };
 
   useEffect(() => {
@@ -70,17 +72,12 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
       removeFilter();
     } else {
       applySearch(searchText);
-      console.log(`Search applied: ${searchText}`);
     }
   }, [searchText]);
 
   return (
     <div className="inline-block float-right">
-      <SearchBar
-        searchText={searchText}
-        styleClass="mr-4"
-        setSearchText={setSearchText}
-      />
+      
       {filterParams.department && (
         <button
           onClick={removeAppliedFilter}
@@ -104,9 +101,7 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
             </li>
           ))}
           <div className="divider mt-0 mb-0"></div>
-          <li>
-            <a onClick={removeAppliedFilter}>Remove Filter</a>
-          </li>
+          
         </ul>
       </div>
     </div>
@@ -128,6 +123,8 @@ function Transactions() {
     thirdYear: "",
     fourthYear: "",
     fifthYear: "",
+    gradeEleven: "",
+    gradeTwelve: "",
   });
   const [search, setSearch] = useState("");
   const [departments, setDepartments] = useState([]);
@@ -175,20 +172,15 @@ function Transactions() {
         }
       });
 
-      // Add search param to the URL
-      if (search) {
-        params.push(`search=${encodeURIComponent(search)}`);
-      }
 
       if (params.length > 0) {
         url += `?${params.join("&")}`;
       }
 
-      console.log(`Fetching data with URL: ${url}`);
 
       const response = await axios.get(url);
+      console.log(response.data)
       setTrans(response.data);
-      console.log("Data fetched successfully:", response.data);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -230,8 +222,17 @@ function Transactions() {
       );
 
       if (response.data && Array.isArray(response.data)) {
-        setMajors(response.data);
-        return response.data;
+        // Remove duplicates while preserving order
+        const uniqueMajors = response.data.reduce((acc, major) => {
+          if (!acc.some(m => m.Major === major.Major)) {
+            acc.push(major);
+          }
+          return acc;
+        }, []);
+
+        setMajors(uniqueMajors);
+        console.log("Unique majors:", uniqueMajors);
+        return uniqueMajors;
       } else {
         console.error("Unexpected majors data structure:", response.data);
         return [];
@@ -257,6 +258,8 @@ function Transactions() {
       thirdYear: "",
       fourthYear: "",
       fifthYear: "",
+      gradeEleven: "",
+      gradeTwelve: "",
     });
     setSearch("");
     fetchData(); // Fetch data
@@ -292,14 +295,14 @@ function Transactions() {
     console.log("majors:", currentMajors);
 
     // Filter the current majors to keep only those belonging to the selected departments
-    const updatedMajors = currentMajors.filter((majorName) => {
-      console.log(majors[0].Major, "name", majorName);
-      const majorObj = majors.find((m) => m.Major === majorName);
-      console.log(majorObj);
+    const updatedMajors = currentMajors.filter(majorName => {
+      console.log(majors[0].Major, "name", majorName)
+      const majorObj = majors.find(m => m.Major === majorName);
+      console.log(majorObj)
       return majorObj && selectedDepartments.includes(majorObj.Department);
     });
-    console.log(updatedMajors);
-    setFilterParams((prevData) => ({
+    console.log(updatedMajors)
+    setFilterParams(prevData => ({
       ...prevData,
       department: selectedDepartments,
       major: updatedMajors,
@@ -325,13 +328,6 @@ function Transactions() {
       <TitleCard
         title="Past Enrollment Datasets [S.Y. 2016-2023]"
         topMargin="mt-2"
-        TopSideButtons={
-          <TopSideButtons
-            applySearch={applySearch}
-            applyFilter={applyFilter}
-            removeFilter={removeFilter}
-          />
-        }
       >
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -368,7 +364,7 @@ function Transactions() {
                   label: dept.Department,
                 }))}
                 isMulti
-                className="basic-multi-select"
+                className="basic-multi-select absolute inset-0 z-60"  // Add these classes
                 classNamePrefix="select"
                 required
               />
@@ -442,7 +438,6 @@ function Transactions() {
                 value={sliderValue}
                 onChange={(value) => setSliderValue(value)}
                 onChangeComplete={(value) => {
-                  console.log(`Start Year: ${value[0]} ${value[1]}`);
                   setFilterParams({
                     ...filterParams,
                     startYear: value[0],
@@ -453,28 +448,45 @@ function Transactions() {
                 }}
                 marks={{
                   [schoolYearRange[0]]: {
-                    style: {
-                      whiteSpace: "nowrap",
-                      transform: "translateX(0%)",
-                      left: "0%",
+                    style: { 
+                      whiteSpace: 'nowrap',
+                      transform: 'translateX(0%)',
+                      left: '0%'
                     },
-                    label: `S.Y. ${schoolYearRange[0]}-${
-                      schoolYearRange[0] + 1
-                    }`,
+                    label: `S.Y. ${schoolYearRange[0]}-${schoolYearRange[0] + 1}`
                   },
                   [schoolYearRange[1]]: {
-                    style: {
-                      whiteSpace: "nowrap",
-                      transform: "translateX(-100%)",
-                      left: "100%",
+                    style: { 
+                      whiteSpace: 'nowrap',
+                      transform: 'translateX(-100%)',
+                      left: '100%'
                     },
-                    label: `S.Y. ${schoolYearRange[1]}-${
-                      schoolYearRange[1] + 1
-                    }`,
-                  },
+                    label: `S.Y. ${schoolYearRange[1]}-${schoolYearRange[1] + 1}`
+                  }
                 }}
                 step={1}
                 tipFormatter={(value) => `S.Y. ${value}-${value + 1}`}
+                styles={{
+                  handle: {
+                    borderColor: 'transparent',
+                    height: 14,
+                    width: 14,
+                    marginTop: -5,
+                    backgroundColor: '#fff',
+                    boxShadow: '0 0 0 2px #1890ff',
+                    zIndex: 0
+                  },
+                  track: {
+                    backgroundColor: '#1890ff'
+                  },
+                  rail: {
+                    backgroundColor: '#d9d9d9'
+                  },
+                  mark: {
+                    display: 'none'  // Hide default marks
+                  }
+                }}
+                className="z-1"
               />
             </div>
 
@@ -520,11 +532,13 @@ function Transactions() {
                 <th>Semester</th>
                 <th>Department</th>
                 <th>Major</th>
-                <th>First_Year</th>
-                <th>Second_Year</th>
-                <th>Third_Year</th>
-                <th>Fourth_Year</th>
-                <th>Fifth_Year</th>
+                <th>1st Year</th>
+                <th>2nd Year</th>
+                <th>3rd Year</th>
+                <th>4th Year</th>
+                <th>5th Year</th>
+                <th>Grade 11</th>
+                <th>Grade 12</th>
                 <th>TOTAL</th>
               </tr>
             </thead>
@@ -535,7 +549,9 @@ function Transactions() {
                   (l["2nd_Year"] || 0) +
                   (l["3rd_Year"] || 0) +
                   (l["4th_Year"] || 0) +
-                  (l["5th_Year"] || 0);
+                  (l["5th_Year"] || 0) + 
+                  (l["Grade_11"] || 0) +
+                  (l["Grade_12"] || 0);
 
                 return (
                   <tr key={k}>
@@ -550,6 +566,8 @@ function Transactions() {
                     <td>{l["3rd_Year"] || 0}</td>
                     <td>{l["4th_Year"] || 0}</td>
                     <td>{l["5th_Year"] || 0}</td>
+                    <td>{l["Grade_11"] || 0}</td>
+                    <td>{l["Grade_12"] || 0}</td>
                     <td>{total}</td>
                   </tr>
                 );
