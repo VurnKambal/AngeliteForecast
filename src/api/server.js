@@ -819,7 +819,6 @@ app.post('/api/login', async (req, res) => {
       const isMatch = await bcrypt.compare(password, user.password_hash);
       if (isMatch) {
         const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1d' });
-        console.log(token)
         return res.json({ token });
       }
     }
@@ -1051,6 +1050,6 @@ app.get("/api/latest-school-year-semester", async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT || 5000, () => {
+app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
   console.log(`Server is running on port ${process.env.PORT || 5000}`);
 });

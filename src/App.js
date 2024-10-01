@@ -47,7 +47,6 @@ function App() {
       setIsAuthenticated(authResult)
       if (authResult) {
         const adminStatus = await checkAdminStatus()
-        console.log(adminStatus)
         setIsAdmin(adminStatus)
       }
       setLoading(false)
