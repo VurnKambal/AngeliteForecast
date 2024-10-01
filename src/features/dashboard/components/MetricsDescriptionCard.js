@@ -6,23 +6,23 @@ function MetricsDescriptionCard() {
       <div className="space-y-2">
         <div>
           <h3 className="font-semibold">SMAPE (Symmetric Mean Absolute Percentage Error)</h3>
-          <p>Measures the percentage difference between predicted and actual values, accounting for both positive and negative errors.</p>
+          <p>- Shows the average difference between predicted and actual values, treating both overestimates and underestimates equally.</p>
         </div>
         <div>
           <h3 className="font-semibold">MAPE (Mean Absolute Percentage Error)</h3>
-          <p>Calculates the average percentage difference between predicted and actual values.</p>
+          <p>- Shows the average error as a percentage of the actual values, helping to understand mistakes in relation to real data.</p>
         </div>
         <div>
           <h3 className="font-semibold">MAE (Mean Absolute Error)</h3>
-          <p>Measures the average magnitude of errors in a set of predictions, without considering their direction.</p>
+          <p>- Measures the average size of mistakes, without considering whether the prediction was too high or too low.</p>
         </div>
         <div>
           <h3 className="font-semibold">RMSE (Root Mean Square Error)</h3>
-          <p>Represents the standard deviation of the residuals (prediction errors), giving higher weight to larger errors.</p>
+          <p>- Measures the average size of the mistakes, giving more importance to bigger errors.</p>
         </div>
         <div>
           <h3 className="font-semibold">R2 (Coefficient of Determination)</h3>
-          <p>Indicates the proportion of the variance in the dependent variable that is predictable from the independent variable(s).</p>
+          <p>- Shows how well the model’s predictions match the real data, where 1 means perfect accuracy.</p>
         </div>
       </div>
     </TitleCard>

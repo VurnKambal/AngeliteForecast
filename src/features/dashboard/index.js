@@ -573,15 +573,13 @@ function Dashboard() {
         })}
       </div>
 
-      {/** ---------------------- Metrics tables and description ------------------------- */}
-      <div className="flex mt-10">
-        {/* Sticky metrics description card */}
-        <div className="w-1/4 sticky top-0 self-start mr-4" style={{maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto'}}>
-          <MetricsDescriptionCard />
-        </div>
+          {/** ---------------------- Metrics description ------------------------- */}
+          <div className="mt-10">
+            <MetricsDescriptionCard />
+          </div>
 
-        {/* Metrics tables */}
-        <div className="w-3/4">
+          {/** ---------------------- Metrics tables ------------------------- */}
+          <div className="mt-10">
           {/** ---------------------- 1st Year ------------------------- */}
           <TitleCard title="1st Year" topMargin="mt-2">
             <div className="overflow-x-auto">
@@ -956,7 +954,7 @@ function Dashboard() {
             </TitleCard>
           </div>
         </div>
-      </div>
+      
     </>
   );
 }
