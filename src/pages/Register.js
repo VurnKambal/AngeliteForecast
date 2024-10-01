@@ -1,7 +1,11 @@
-import {useState, useRef} from 'react'
+import {useEffect, useState, useRef} from 'react'
+import { useDispatch } from 'react-redux'
+import { setPageTitle } from '../features/common/headerSlice'
 import Register from '../features/user/Register'
 
 function InternalPage(){
+    const dispatch = useDispatch()
+
     useEffect(() => {
         dispatch(setPageTitle({ title : "Registration"}))
       }, [])
