@@ -352,10 +352,15 @@ app.post(
       if (!isMatch) {
         return res.status(400).json({ error: "Invalid credentials" });
       }
-
-      const token = jwt.sign({ userId: user.id }, SECRET_KEY, {
-        expiresIn: "1h",
-      });
+      const token = jwt.sign(
+        { 
+          userId: user.id,
+        }, 
+        SECRET_KEY, 
+        {
+          expiresIn: "1h",
+        }
+      );
       res.json({ token });
     } catch (err) {
       console.error("Error occurred:", err);
@@ -364,8 +369,11 @@ app.post(
   }
 );
 
+
+
+
 // New route to get the latest data year
-app.get("/api/latest-data-year", async (req, res) => {
+app.get("/api/latest-data-years", async (req, res) => {
   try {
     const latestYearQuery = {
       text: `
@@ -397,6 +405,6 @@ app.get("/api/latest-data-year", async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT || 5000, () => {
+app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
   console.log(`Server is running on port ${process.env.PORT || 5000}`);
 });

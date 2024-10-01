@@ -12,8 +12,8 @@ def compute_file_hash(file_path):
 
 def update_model_hashes():
     model_dir = "models"  # Adjust this to your model directory path
-    model_files = ["rf_model.pkl", "xgb_model.pkl", "ensembled_models.pkl", 
-                   "lr_models.pkl", "knn_model.pkl", "svr_model.pkl"]
+    model_files = ["rf_model.pkl", "xgb_model.pkl",
+                   "lr_models.pkl", "knn_model.pkl"]
 
     hash_dict = {}
     for model_file in model_files:

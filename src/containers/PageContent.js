@@ -1,5 +1,5 @@
 import Header from "./Header"
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
+import { Route, Routes, Navigate } from 'react-router-dom'
 import routes from '../routes'
 import { Suspense, lazy } from 'react'
 import SuspenseContent from "./SuspenseContent"
@@ -8,11 +8,9 @@ import { useEffect, useRef } from "react"
 
 const Page404 = lazy(() => import('../pages/protected/404'))
 
-
-function PageContent(){
+function PageContent({ isAdmin }){
     const mainContentRef = useRef(null);
     const {pageTitle} = useSelector(state => state.header)
-
 
     // Scroll back to top on new page load
     useEffect(() => {
@@ -24,12 +22,21 @@ function PageContent(){
 
     return(
         <div className="drawer-content flex flex-col ">
-            <Header/>
+            <Header isAdmin={isAdmin}/>
             <main className="flex-1 overflow-y-auto md:pt-4 pt-4 px-6  bg-base-200" ref={mainContentRef}>
                 <Suspense fallback={<SuspenseContent />}>
                         <Routes>
                             {
                                 routes.map((route, key) => {
+                                    if (route.adminOnly && !isAdmin) {
+                                        return (
+                                            <Route
+                                                key={key}
+                                                path={`${route.path}`}
+                                                element={<Navigate to="/unauthorized" replace />}
+                                            />
+                                        )
+                                    }
                                     return(
                                         <Route
                                             key={key}
@@ -50,6 +57,5 @@ function PageContent(){
         </div> 
     )
 }
-
 
 export default PageContent

@@ -1,10 +1,11 @@
 import axios from "axios"
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const checkAuth = () => {
 /*  Getting token value stored in localstorage, if token is not present we will open login page 
     for all internal dashboard routes  */
     const TOKEN = localStorage.getItem("token")
-    const PUBLIC_ROUTES = ["login", "forgot-password", "register", "documentation"]
+    const PUBLIC_ROUTES = ["login"]
 
     const isPublicPage = PUBLIC_ROUTES.some( r => window.location.href.includes(r))
 
@@ -35,3 +36,24 @@ const checkAuth = () => {
 }
 
 export default checkAuth
+
+export const checkAdminStatus = async () => {
+  try {
+    const token = localStorage.getItem('token'); // Assuming you store the token in localStorage
+    if (!token) {
+      console.error('No token found');
+      return false;
+    }
+
+    const response = await axios.get(`${API_BASE_URL}/api/check-role`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    console.log(response)
+    return response.data.role === 'Admin';
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    return false;
+  }
+}

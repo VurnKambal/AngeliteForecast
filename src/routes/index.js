@@ -17,7 +17,7 @@ const ProfileSettings = lazy(() => import('../pages/protected/ProfileSettings'))
 const GettingStarted = lazy(() => import('../pages/GettingStarted'))
 const DocFeatures = lazy(() => import('../pages/DocFeatures'))
 const DocComponents = lazy(() => import('../pages/DocComponents'))
-
+const Register = lazy(() => import('../pages/Register'))
 
 const routes = [
   {
@@ -79,6 +79,11 @@ const routes = [
   {
     path: '/blank',
     component: Blank,
+  },
+  {
+    path: '/register',
+    component: Register,
+    adminOnly: true, // Add this property to indicate it's an admin-only route
   },
 ]
 

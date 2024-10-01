@@ -1,13 +1,10 @@
 import {useState, useRef} from 'react'
-import {Link} from 'react-router-dom'
 import Register from '../features/user/Register'
 
 function ExternalPage(){
-
-
     return(
-        <div className="">
-                <Register />
+        <div className="container mx-auto mt-8">
+            <Register />
         </div>
     )
 }

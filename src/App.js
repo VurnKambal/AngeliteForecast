@@ -1,12 +1,12 @@
-import React, { lazy, useEffect } from 'react'
+import React, { lazy, useEffect, useState } from 'react'
 import './App.css';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom'
 import { themeChange } from 'theme-change'
-import checkAuth from './app/auth';
+import checkAuth, { checkAdminStatus } from './app/auth';
 import initializeApp from './app/init';
 import { useSelector } from 'react-redux';
-
-
+import routes from './routes';
+import PageContent from './containers/PageContent';
 
 // Importing pages
 const Layout = lazy(() => import('./containers/Layout'))
@@ -35,42 +35,71 @@ const UnauthenticatedRoute = ({ children }) => {
 };
 
 function App() {
+  const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
   useEffect(() => {
-    // Set initial theme to mytheme
     localStorage.setItem('theme', 'mytheme');
-    // Initialize daisy UI themes
-    themeChange(false);
+    themeChange(false)
+    const initializeAuth = async () => {
+      const authResult = await checkAuth()
+      setIsAuthenticated(authResult)
+      if (authResult) {
+        const adminStatus = await checkAdminStatus()
+        console.log(adminStatus)
+        setIsAdmin(adminStatus)
+      }
+      setLoading(false)
+    }
+    initializeAuth()
   }, [])
 
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   return (
-    <>
-      <Router>
-        <Routes>
-          <Route path="/login" element={
-            <UnauthenticatedRoute>
+    <Router>
+      <Routes>
+        {/* Public routes */}
+        <Route 
+          path="/login" 
+          element={
+            isAuthenticated ? (
+              <Navigate to="/app/welcome" replace />
+            ) : (
               <Login />
-            </UnauthenticatedRoute>
-          } />
-          <Route path="/forgot-password" element={
-            <UnauthenticatedRoute>
-              <ForgotPassword />
-            </UnauthenticatedRoute>
-          } />
-          <Route path="/register" element={
-            <UnauthenticatedRoute>
-              <Register />
-            </UnauthenticatedRoute>
-          } />
-          
-          {/* Place new routes over this */}
-          <Route path="/app/*" element={<Layout />} />
+            )
+          } 
+        />
+        
+        {/* Protected routes */}
+        {routes.map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={
+              isAuthenticated ? (
+                route.adminOnly && !isAdmin ? (
+                  <Navigate to={token ? "/app/welcome" : "/login"} replace />
+                ) : (
+                  <route.component />
+                )
+              ) : (
+                <Navigate to={token ? "/app/welcome" : "/login"} replace />
+              )
+            }
+          />
+        ))}
+        
+        {/* Place new routes over this */}
+        <Route path="/app/*" element={<Layout isAdmin={isAdmin} />} />
 
-          <Route path="*" element={<Navigate to={token ? "/app/welcome" : "/login"} replace />}/>
-
-        </Routes>
-      </Router>
-    </>
+        {/* Fallback route */}
+        <Route path="*" element={<Navigate to={token ? "/app/welcome" : "/login"} replace />}/>
+      </Routes>
+    </Router>
   )
 }
 

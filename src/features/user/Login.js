@@ -21,8 +21,8 @@ function Login() {
     e.preventDefault();
     setErrorMessage("");
 
-    if (loginObj.email.trim() === "") return setErrorMessage("Email is required! (use any value)");
-    if (loginObj.password.trim() === "") return setErrorMessage("Password is required! (use any value)");
+    if (loginObj.email.trim() === "") return setErrorMessage("Email is required!");
+    if (loginObj.password.trim() === "") return setErrorMessage("Password is required!");
     else {
       setLoading(true);
       try {
@@ -65,7 +65,7 @@ function Login() {
                 <InputText defaultValue={loginObj.password} type="password" updateType="password" containerStyle="mt-4" labelTitle="Password" updateFormValue={updateFormValue} />
               </div>
               {/* <div className='text-right text-primary'><Link to="/forgot-password"><span className="text-sm inline-block hover:text-primary hover:underline hover:cursor-pointer transition duration-200">Forgot Password?</span></Link></div> */}
-              <ErrorText styleClass="mt-8">{errorMessage}</ErrorText>
+              <ErrorText styleClass="mt-8 text-red-500">{errorMessage}</ErrorText>
               <button type="submit" className={"btn mt-2 w-full btn-primary" + (loading ? " loading" : "")}>Login</button>
               {/* <div className='text-center mt-4'>Don't have an account yet? <Link to="/register"><span className="inline-block hover:text-primary hover:underline hover:cursor-pointer transition duration-200">Register</span></Link></div> */}
             </form>

@@ -1,4 +1,7 @@
 const express = require("express");
+const passport = require('passport');
+const JwtStrategy = require('passport-jwt').Strategy;
+const ExtractJwt = require('passport-jwt').ExtractJwt;
 const { Pool } = require("pg");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
@@ -7,6 +10,7 @@ const { body, query, validationResult } = require("express-validator");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
+const zxcvbn = require('zxcvbn');
 
 const app = express();
 app.use(express.json());
@@ -18,6 +22,8 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
 });
+app.use(limiter);
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -27,6 +33,32 @@ const pool = new Pool({
 });
 
 const SECRET_KEY = process.env.JWT_SECRET;
+
+// JWT strategy
+const jwtOptions = {
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: SECRET_KEY
+};
+
+passport.use(new JwtStrategy(jwtOptions, async (jwt_payload, done) => {
+  try {
+    const userQuery = {
+      text: "SELECT * FROM users WHERE id = $1",
+      values: [jwt_payload.id],
+    };
+    const result = await pool.query(userQuery);
+    if (result.rows.length > 0) {
+      return done(null, result.rows[0]);
+    } else {
+      return done(null, false);
+    }
+  } catch (error) {
+    return done(error, false);
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
 
 // Middleware to validate request
 const validate = (req, res, next) => {
@@ -207,7 +239,6 @@ app.get("/api/dashboard-selected-stats", async (req, res) => {
 
 
     const admissionResult = await pool.query(applicantsQuery, applicantsQueryParams);
-    console.log("admissionnn", admissionResult)
 
 
     
@@ -594,14 +625,24 @@ app.get(
     }
   }
 );
-
 // Registration endpoint
 app.post(
   "/api/register",
   [
     body("name").isString().trim().escape(),
-    body("email").isEmail().normalizeEmail(),
-    body("password").isLength({ min: 6 }),
+    body("email").isEmail().normalizeEmail().custom(value => {
+      if (!value.endsWith('hau.edu.ph')) {
+        throw new Error('Email must be a valid HAU email address');
+      }
+      return true;
+    }),
+    body("password").custom((value, { req }) => {
+      const result = zxcvbn(value);
+      if (result.score < 3) {
+        throw new Error('Password is too weak. Please choose a stronger password.');
+      }
+      return true;
+    }),
     body("confirmPassword").custom((value, { req }) => {
       if (value !== req.body.password) {
         throw new Error("Password confirmation does not match password");
@@ -609,10 +650,17 @@ app.post(
       return true;
     }),
   ],
-  validate,
   async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { name, email, password } = req.body;
     try {
+      // Start a transaction
+      await pool.query('BEGIN');
+
       // Check if username already exists
       const usernameQuery = {
         text: "SELECT * FROM users WHERE username = $1",
@@ -620,6 +668,7 @@ app.post(
       };
       const usernameCheck = await pool.query(usernameQuery);
       if (usernameCheck.rows.length > 0) {
+        await pool.query('ROLLBACK');
         return res.status(400).json({ error: "Username already exists" });
       }
 
@@ -630,6 +679,7 @@ app.post(
       };
       const emailCheck = await pool.query(emailQuery);
       if (emailCheck.rows.length > 0) {
+        await pool.query('ROLLBACK');
         return res.status(400).json({ error: "Email already exists" });
       }
 
@@ -639,8 +689,22 @@ app.post(
         values: [name, email, hashedPassword],
       };
       const result = await pool.query(insertQuery);
-      res.status(201).json({ userId: result.rows[0].id });
+      const userId = result.rows[0].id;
+
+      // Insert user role
+      const insertRoleQuery = {
+        text: "INSERT INTO user_roles (user_id, role_id) VALUES ($1, (SELECT id FROM roles WHERE name = 'User'))",
+        values: [userId],
+      };
+      await pool.query(insertRoleQuery);
+
+      // Commit the transaction
+      await pool.query('COMMIT');
+
+      const token = jwt.sign({ id: userId }, SECRET_KEY, { expiresIn: '1d' });
+      res.status(201).json({ token });
     } catch (err) {
+      await pool.query('ROLLBACK');
       console.error("Error occurred:", err);
       res.status(500).json({ error: "Internal Server Error" });
     }
@@ -726,7 +790,6 @@ app.get('/api/leads/lowest-year',
   async (req, res) => {
     try {
       const result = await pool.query('SELECT MIN("Start_Year") as lowest_year FROM processed_factors');
-      console.log(result.rows[0], result.rows[0])
       if (result.rows.length > 0 && result.rows[0].lowest_year) {
         res.json({ lowestYear: result.rows[0].lowest_year });
       } else {
@@ -743,41 +806,61 @@ app.get('/api/leads/lowest-year',
 
 
 // Login endpoint
-app.post(
-  "/api/login",
-  [
-    body("email").isEmail().normalizeEmail(),
-    body("password").isLength({ min: 6 }),
-  ],
-  validate,
-  async (req, res) => {
-    const { email, password } = req.body;
-    try {
-      const emailQuery = {
-        text: "SELECT * FROM users WHERE email = $1",
-        values: [email],
-      };
-      const result = await pool.query(emailQuery);
-      if (result.rows.length === 0) {
-        return res.status(400).json({ error: "Invalid credentials" });
-      }
-
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const userQuery = {
+      text: "SELECT * FROM users WHERE email = $1",
+      values: [email],
+    };
+    const result = await pool.query(userQuery);
+    if (result.rows.length > 0) {
       const user = result.rows[0];
       const isMatch = await bcrypt.compare(password, user.password_hash);
-      if (!isMatch) {
-        return res.status(400).json({ error: "Invalid credentials" });
+      if (isMatch) {
+        const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1d' });
+        console.log(token)
+        return res.json({ token });
       }
-
-      const token = jwt.sign({ userId: user.id }, SECRET_KEY, {
-        expiresIn: "1h",
-      });
-      res.json({ token });
-    } catch (err) {
-      console.error("Error occurred:", err);
-      res.status(500).json({ error: "Internal Server Error" });
     }
+    return res.status(401).json({ error: 'Invalid credentials' });
+  } catch (error) {
+    console.error("Error occurred:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
-);
+});
+
+// Protected route example
+app.get('/api/protected', passport.authenticate('jwt', { session: false }), (req, res) => {
+  res.json({ message: 'You accessed a protected route!', user: req.user });
+});
+
+// Check role API
+app.get("/api/check-role", async (req, res) => {
+  try {
+    const token = req.headers.authorization.split(' ')[1];
+    try {
+      const decodedToken = jwt.verify(token, SECRET_KEY);
+      const userId = decodedToken.id;
+      const roleQuery = {
+        text: "SELECT roles.name as role FROM user_roles INNER JOIN roles ON user_roles.role_id = roles.id WHERE user_roles.user_id = $1",
+        values: [userId],
+      };
+      const result = await pool.query(roleQuery);
+      if (result.rows.length > 0) {
+        res.json({ role: result.rows[0].role });
+      } else {
+        res.status(404).json({ error: "No role found" });
+      }
+    } catch (error) {
+      console.error("Invalid token:", error);
+      res.status(401).json({ error: "Invalid token. Please login again." });
+    }
+  } catch (err) {
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 
 // New route to get the latest data year

@@ -10,7 +10,7 @@ import { RIGHT_DRAWER_TYPES } from "../utils/globalConstantUtil";
 
 import { NavLink, Routes, Link, useLocation } from "react-router-dom";
 
-function Header() {
+function Header({ isAdmin }) {
   const dispatch = useDispatch();
   const { noOfNotifications, pageTitle } = useSelector((state) => state.header);
   const [currentTheme, setCurrentTheme] = useState(
@@ -48,8 +48,7 @@ function Header() {
   }
 
   function RegisterUser() {
-    localStorage.clear();
-    window.location.href = "/register";
+    window.location.href = "/app/register";
   }
 
   return (
@@ -120,16 +119,19 @@ function Header() {
                         </li>
                         <li className=''><Link to={'/app/settings-billing'}>Bill History</Link></li> */}
               {/* <div className="divider mt-0 mb-0"></div> */}
+              {isAdmin && (
+                <li>
+                  <a class="text-error" onClick={RegisterUser}>
+                    Create New User
+                  </a>
+                </li>
+              )}
               <li>
                 <a class="text-error" onClick={logoutUser}>
                   Logout
                 </a>
               </li>
-              <li>
-                <a class="text-error" onClick={RegisterUser}>
-                  Register
-                </a>
-              </li>
+              
             </ul>
           </div>
         </div>
