@@ -106,7 +106,7 @@ ENGINE = connect_to_database(USERNAME, PASSWORD, HOST, PORT, DATABASE)
 
 
 # Endpoint to train models
-@app.route('/api/train', methods=['POST'])
+@app.route('/python/train', methods=['POST'])
 def train():
     data = request.get_json()
     selected_model = data.get('model')
@@ -119,7 +119,7 @@ def train():
     return jsonify({"message": f"{selected_model.capitalize()} model trained successfully"}), 200
 
 # Endpoint to make predictions
-@app.route('/api/predict', methods=['POST'])
+@app.route('/python/predict', methods=['POST'])
 def predict():
     data = request.get_json()
      
@@ -138,7 +138,7 @@ def predict():
     return jsonify(prediction.to_json(orient='records')), 200
 
 # New route to process data from React app
-@app.route('/api/process-data', methods=['POST'])
+@app.route('/python/process-data', methods=['POST'])
 def process_data(train=False):
     global models, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df
 
@@ -192,7 +192,7 @@ def process_data(train=False):
 
 
 
-@app.route('/api/plot', methods=['POST'])
+@app.route('/python/plot', methods=['POST'])
 def plot():
     data = request.json
     year_level = data.get('year_level', '1st_Year')  # Default to '1st_Year' if not provided

@@ -275,7 +275,7 @@ function InternalPage() {
     e.preventDefault();
     try {
       const processFactorsResponse = await axios.post(
-        `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/process-data`,
+        `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/process-data`,
         formData
       );
       if (
@@ -321,7 +321,7 @@ function InternalPage() {
 
       try {
         var predictionResult = await axios.post(
-          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/predict`,
+          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/predict`,
           predictPayload
         );
         const predictionsList = JSON.parse(predictionResult.data);
@@ -347,7 +347,7 @@ function InternalPage() {
       try {
         console.log("aaa", predictionResult);
         const plotResponse = await axios.post(
-          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot`,
+          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/plot`,
           {
             ...predictionResult.data,
             ...modelField,
@@ -374,7 +374,7 @@ function InternalPage() {
         plotDiv.appendChild(plotImage);
       } catch (error) {
         console.error(
-          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot Error submitting form:`,
+          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/plot Error submitting form:`,
           error
         );
         document.getElementById("plot").innerHTML = "Error submitting form";
