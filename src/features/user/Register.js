@@ -18,7 +18,6 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [registerObj, setRegisterObj] = useState(INITIAL_REGISTER_OBJ);
-  const [showPassword, setShowPassword] = useState(false);
 
   const submitForm = async (e) => {
     e.preventDefault();
@@ -60,10 +59,6 @@ function Register() {
     setRegisterObj(prev => ({ ...prev, password }));
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
     <div className="min-h-screen bg-base-200 flex items-start"> {/* Changed from items-center to items-start and added pt-16 */}
       <div className="card mx-auto w-full max-w-5xl shadow-xl">
@@ -77,9 +72,9 @@ function Register() {
             <h2 className='text-2xl font-semibold mb-2 text-center'>REGISTER NEW USER</h2>
             <form onSubmit={(e) => submitForm(e)}>
               <div className="mb-4">
-                <InputText defaultValue={registerObj.name} type="text" updateType="name" containerStyle="mt-4" labelTitle="Name" updateFormValue={updateFormValue} />
+                <InputText value={registerObj.name} type="text" updateType="name" containerStyle="mt-4" labelTitle="Name" updateFormValue={updateFormValue} />
                 <InputText 
-                  defaultValue={registerObj.email} 
+                  value={registerObj.email} 
                   type="email" 
                   updateType="email" 
                   containerStyle="mt-4" 
@@ -88,7 +83,7 @@ function Register() {
                   placeholder="useremail@hau.edu.ph"
                 />
                 <InputText 
-                  defaultValue={registerObj.password} 
+                  value={registerObj.password} 
                   type="password" 
                   updateType="password" 
                   containerStyle="mt-4" 
@@ -96,8 +91,6 @@ function Register() {
                   updateFormValue={updateFormValue} 
                   labelButton="Generate Password"
                   onLabelButtonClick={generatePassword}
-                  showPassword={showPassword}
-                  togglePasswordVisibility={togglePasswordVisibility}
                 />
                 
                 <PasswordStrengthMeter password={registerObj.password} />

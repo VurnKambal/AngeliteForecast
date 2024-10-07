@@ -1,22 +1,27 @@
-import React from "react"
+import React, { useState, useEffect } from "react"
 
 function InputText({
   labelTitle, 
   labelStyle, 
   type, 
   containerStyle, 
-  defaultValue, 
+  defaultValue,
+  value,
   placeholder, 
   updateFormValue, 
   updateType, 
   labelButton, 
   labelButtonStyle,
-  onLabelButtonClick,
-  showPassword,
-  togglePasswordVisibility
+  onLabelButtonClick
 }){
+    const [showPassword, setShowPassword] = useState(false);
+
     const updateInputValue = (val) => {
         updateFormValue({updateType, value : val})
+    }
+
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
     }
 
     return(
@@ -39,6 +44,7 @@ function InputText({
                 <input 
                     type={type === 'password' && showPassword ? 'text' : type || "text"}
                     defaultValue={defaultValue}
+                    value={value}
                     placeholder={placeholder || ""} 
                     onChange={(e) => updateInputValue(e.target.value)} 
                     className="input input-bordered w-full pr-20" 
