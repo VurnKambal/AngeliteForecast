@@ -32,14 +32,14 @@ const routes = [
     name: 'Dashboard',
   },
   {
-    path: '/app/factors',
+    path: '/app/trends',
     icon: <ClipboardDocumentCheckIcon className={iconClasses} />, // Using available icon "ClipboardDocumentCheckIcon"
-    name: 'Factors',
+    name: 'Trends',
   },
   {
     path: '/app/enrollments',
     icon: <TableCellsIcon className={submenuIconClasses} />,
-    name: 'Historical Data',
+    name: 'Enrollments',
   },
   {
     path: '/app/dashboard',

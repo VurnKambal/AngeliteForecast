@@ -146,7 +146,10 @@ function Leads() {
 
   return (
     <>
-      <TitleCard title="External Factors" topMargin="mt-2">
+      <TitleCard 
+        title={`Past Trends [${schoolYearRange[0]} - ${schoolYearRange[1]}]`}
+        topMargin="mt-2"
+      >
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-control">

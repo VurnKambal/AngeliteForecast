@@ -17,7 +17,7 @@ function Header({ isAdmin }) {
     localStorage.getItem("theme")
   );
 
-  useEffect(() => {
+  useEffect(() => { 
     themeChange(false);
     if (currentTheme === null) {
       if (

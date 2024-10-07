@@ -7,7 +7,7 @@ function InternalPage(){
     const dispatch = useDispatch()
 
     useEffect(() => {
-        dispatch(setPageTitle({ title : "Factors"}))
+        dispatch(setPageTitle({ title : "Trends"}))
       }, [])
 
 

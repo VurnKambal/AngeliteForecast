@@ -356,7 +356,7 @@ function Transactions() {
   return (
     <>
       <TitleCard
-        title="Past Enrollment Datasets [S.Y. 2016-2023]"
+        title={`Past Enrollments [${schoolYearRange[0]}-${schoolYearRange[0]+1} | ${schoolYearRange[1]}-${schoolYearRange[1]+1}]`}
         topMargin="mt-2"
       >
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 mb-4">

@@ -7,7 +7,7 @@ const Welcome = lazy(() => import('../pages/protected/Welcome'))
 const Page404 = lazy(() => import('../pages/protected/404'))
 const Blank = lazy(() => import('../pages/protected/Blank'))
 const Charts = lazy(() => import('../pages/protected/Charts'))
-const Factors = lazy(() => import('../pages/protected/Leads'))
+const Trends = lazy(() => import('../pages/protected/Leads'))
 const Integration = lazy(() => import('../pages/protected/Integration'))
 const Calendar = lazy(() => import('../pages/protected/Calendar'))
 const Team = lazy(() => import('../pages/protected/Team'))
@@ -30,8 +30,8 @@ const routes = [
     component: Welcome, // view rendered
   },
   {
-    path: '/factors',
-    component: Factors,
+    path: '/trends',
+    component: Trends,
   },
   {
     path: '/settings-team',
