@@ -4,6 +4,7 @@ import Select from "react-select";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import TitleCard from "../../components/Cards/TitleCard";
+import { Select as AntSelect } from 'antd';
 
 function Leads() {
   const [trans, setTrans] = useState([]);
@@ -15,6 +16,8 @@ function Leads() {
   const [departments, setDepartments] = useState([]);
   const [schoolYearRange, setSchoolYearRange] = useState([2018, new Date().getFullYear()]);
   const [sliderValue, setSliderValue] = useState(schoolYearRange);
+  const [startYear, setStartYear] = useState(schoolYearRange[0]);
+  const [endYear, setEndYear] = useState(schoolYearRange[1]);
 
   // Fetch the lowest year and latest year
   const fetchYearRange = async () => {
@@ -111,6 +114,36 @@ function Leads() {
     fetchData();
   };
 
+  const handleStartYearChange = (value) => {
+    setStartYear(value);
+    if (value > endYear) {
+      setEndYear(value);
+    }
+    setFilterParams({
+      ...filterParams,
+      startYear: value,
+      endYear: Math.max(value, endYear)
+    });
+  };
+
+  const handleEndYearChange = (value) => {
+    setEndYear(value);
+    if (value < startYear) {
+      setStartYear(value);
+    }
+    setFilterParams({
+      ...filterParams,
+      startYear: Math.min(startYear, value),
+      endYear: value
+    });
+  };
+
+  useEffect(() => {
+    // Update local state when filterParams change
+    setStartYear(filterParams.startYear);
+    setEndYear(filterParams.endYear);
+  }, [filterParams.startYear, filterParams.endYear]);
+
   return (
     <>
       <TitleCard title="External Factors" topMargin="mt-2">
@@ -157,63 +190,29 @@ function Leads() {
                   Reset
                 </button>
               </label>
-              <Slider
-                range
-                min={schoolYearRange[0]}
-                max={schoolYearRange[1]}
-                value={sliderValue}
-                onChange={(value) => setSliderValue(value)}
-                onChangeComplete={(value) => {
-                  setFilterParams({
-                    ...filterParams,
-                    startYear: value[0],
-                    endYear: value[1]
-                  });
-                }}
-                marks={{
-                  [sliderValue[0]]: {
-                    style: { 
-                      whiteSpace: 'nowrap',
-                      transform: sliderValue[0] === schoolYearRange[0] ? 'translateX(0%)' : 'translateX(-50%)',
-                      color: '#1890ff',
-                      fontWeight: 'bold',
-                    },
-                    label: `${sliderValue[0]}`
-                  },
-                  [sliderValue[1]]: {
-                    style: { 
-                      whiteSpace: 'nowrap',
-                      transform: sliderValue[1] === schoolYearRange[1] ? 'translateX(-100%)' : 'translateX(-50%)',
-                      color: '#1890ff',
-                      fontWeight: 'bold'
-                    },
-                    label: `${sliderValue[1]}`
-                  }
-                }}
-                step={1}
-                tipFormatter={(value) => `${value}`}
-                styles={{
-                  handle: {
-                    borderColor: 'transparent',
-                    height: 14,
-                    width: 14,
-                    marginTop: -5,
-                    backgroundColor: '#fff',
-                    boxShadow: '0 0 0 2px #1890ff',
-                    zIndex: 0
-                  },
-                  track: {
-                    backgroundColor: '#1890ff'
-                  },
-                  rail: {
-                    backgroundColor: '#d9d9d9'
-                  },
-                  mark: {
-                    display: 'none'  // Hide default marks
-                  }
-                }}
-                className="z-1"
-              />
+              <div className="flex items-center space-x-4 w-full">
+                <div className="flex-grow flex items-center space-x-2">
+                  <AntSelect
+                    value={startYear}
+                    onChange={handleStartYearChange}
+                    className="flex-1"
+                  >
+                    {Array.from({ length: schoolYearRange[1] - schoolYearRange[0] + 1 }, (_, i) => schoolYearRange[0] + i).map(year => (
+                      <AntSelect.Option key={year} value={year}>{year}</AntSelect.Option>
+                    ))}
+                  </AntSelect>
+                  <span>-</span>
+                  <AntSelect
+                    value={endYear}
+                    onChange={handleEndYearChange}
+                    className="flex-1"
+                  >
+                    {Array.from({ length: schoolYearRange[1] - startYear + 1 }, (_, i) => startYear + i).map(year => (
+                      <AntSelect.Option key={year} value={year}>{year}</AntSelect.Option>
+                    ))}
+                  </AntSelect>
+                </div>
+              </div>
             </div>
           </div>
           

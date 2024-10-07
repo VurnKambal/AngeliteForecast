@@ -22,7 +22,6 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
 });
-app.use(limiter);
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -405,6 +404,7 @@ app.get(
         query += " AND " + conditions.join(" AND ");
       }
 
+      query += ` ORDER BY "Start_Year" DESC, "Department" ASC, "Major" ASC`;
       // Log the query for debugging
       console.log("Executing query:", query);
       console.log("With values:", values);
@@ -643,12 +643,6 @@ app.post(
       }
       return true;
     }),
-    body("confirmPassword").custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error("Password confirmation does not match password");
-      }
-      return true;
-    }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -741,7 +735,6 @@ app.get(
         FROM processed_factors
         WHERE "Start_Year" >= $1 AND "Start_Year" <= $2
       `;
-
       // Handle multiple departments
       if (department) {
         const departments = department.split(",");
@@ -772,7 +765,7 @@ app.get(
       }
 
       // Add ordering
-      query += ` ORDER BY "Start_Year" ASC, "Department" ASC`;
+      query += ` ORDER BY "Start_Year" DESC, "Department" ASC`;
 
       console.log("Executing query:", query);
       console.log("With values:", values);
@@ -804,7 +797,6 @@ app.get('/api/leads/lowest-year',
 
 
 
-
 // Login endpoint
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
@@ -818,8 +810,22 @@ app.post('/api/login', async (req, res) => {
       const user = result.rows[0];
       const isMatch = await bcrypt.compare(password, user.password_hash);
       if (isMatch) {
+        // Check if it's the first login
+        const isFirstLogin = user.login_counter === 0;
+
+        // Increment the login counter
+        const updateLoginCounterQuery = {
+          text: "UPDATE users SET login_counter = login_counter + 1 WHERE id = $1",
+          values: [user.id],
+        };
+        await pool.query(updateLoginCounterQuery);
+
         const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1d' });
-        return res.json({ token });
+        return res.json({ 
+          token,
+          isFirstLogin,
+          message: isFirstLogin ? 'Please change your password for security reasons.' : null
+        });
       }
     }
     return res.status(401).json({ error: 'Invalid credentials' });
@@ -828,6 +834,25 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+// Change password endpoint
+app.post('/api/change-password', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { newPassword } = req.body;
+  try {
+    const user = req.user;
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const updatePasswordQuery = {
+      text: "UPDATE users SET password_hash = $1 WHERE id = $2",
+      values: [hashedPassword, user.id],
+    };
+    await pool.query(updatePasswordQuery);
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error("Error occurred:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 // Protected route example
 app.get('/api/protected', passport.authenticate('jwt', { session: false }), (req, res) => {

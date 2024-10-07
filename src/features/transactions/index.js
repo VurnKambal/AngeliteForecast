@@ -7,6 +7,7 @@ import TitleCard from "../../components/Cards/TitleCard";
 import FunnelIcon from "@heroicons/react/24/outline/FunnelIcon";
 import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
 import SearchBar from "../../components/Input/SearchBar";
+import { Select as AntSelect } from 'antd';
 
 const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
   const [filterParams, setFilterParams] = useState({
@@ -111,10 +112,10 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
 function Transactions() {
   const [trans, setTrans] = useState([]);
   const [filterParams, setFilterParams] = useState({
-    startYear: "",
-    endYear: "",
-    startYear_1: "",
-    endYear_1: "",
+    startYear: 2016,
+    endYear: 2017,
+    startYear_1: new Date().getFullYear(),
+    endYear_1: new Date().getFullYear() + 1,
     semester: [],
     department: "",
     major: "",
@@ -150,6 +151,15 @@ function Transactions() {
       const latestYear = latestYearResponse.data.latestYear;
 
       setSchoolYearRange([parseInt(lowestYear, 10), parseInt(latestYear, 10)]);
+      
+      // Set default values for filterParams
+      setFilterParams(prevParams => ({
+        ...prevParams,
+        startYear: parseInt(lowestYear, 10),
+        endYear: parseInt(lowestYear, 10) + 1,
+        startYear_1: parseInt(latestYear, 10),
+        endYear_1: parseInt(latestYear, 10) + 1
+      }));
     } catch (error) {
       console.error("Error fetching year range:", error);
     }
@@ -323,6 +333,26 @@ function Transactions() {
     { value: "2", label: "2nd Semester" },
   ];
 
+  const handleStartYearChange = (value) => {
+    setFilterParams(prevParams => ({
+      ...prevParams,
+      startYear: value,
+      endYear: value + 1,
+      startYear_1: Math.max(value, prevParams.startYear_1),
+      endYear_1: Math.max(value + 1, prevParams.endYear_1)
+    }));
+  };
+
+  const handleEndYearChange = (value) => {
+    setFilterParams(prevParams => ({
+      ...prevParams,
+      startYear_1: value,
+      endYear_1: value + 1,
+      startYear: Math.min(value, prevParams.startYear),
+      endYear: Math.min(value + 1, prevParams.endYear)
+    }));
+  };
+
   return (
     <>
       <TitleCard
@@ -417,77 +447,42 @@ function Transactions() {
                 <button
                   type="button"
                   onClick={() => {
-                    setFilterParams({
-                      ...filterParams,
+                    setFilterParams(prevParams => ({
+                      ...prevParams,
                       startYear: schoolYearRange[0],
                       endYear: schoolYearRange[0] + 1,
                       startYear_1: schoolYearRange[1],
                       endYear_1: schoolYearRange[1] + 1,
-                    });
-                    setSliderValue(schoolYearRange);
+                    }));
                   }}
                   className="btn btn-xs btn-ghost ml-2"
                 >
                   Reset
                 </button>
               </label>
-              <Slider
-                range
-                min={schoolYearRange[0]}
-                max={schoolYearRange[1]}
-                value={sliderValue}
-                onChange={(value) => setSliderValue(value)}
-                onChangeComplete={(value) => {
-                  setFilterParams({
-                    ...filterParams,
-                    startYear: value[0],
-                    endYear: value[0] + 1,
-                    startYear_1: value[1],
-                    endYear_1: value[1] + 1,
-                  });
-                }}
-                marks={{
-                  [schoolYearRange[0]]: {
-                    style: { 
-                      whiteSpace: 'nowrap',
-                      transform: 'translateX(0%)',
-                      left: '0%'
-                    },
-                    label: `S.Y. ${schoolYearRange[0]}-${schoolYearRange[0] + 1}`
-                  },
-                  [schoolYearRange[1]]: {
-                    style: { 
-                      whiteSpace: 'nowrap',
-                      transform: 'translateX(-100%)',
-                      left: '100%'
-                    },
-                    label: `S.Y. ${schoolYearRange[1]}-${schoolYearRange[1] + 1}`
-                  }
-                }}
-                step={1}
-                tipFormatter={(value) => `S.Y. ${value}-${value + 1}`}
-                styles={{
-                  handle: {
-                    borderColor: 'transparent',
-                    height: 14,
-                    width: 14,
-                    marginTop: -5,
-                    backgroundColor: '#fff',
-                    boxShadow: '0 0 0 2px #1890ff',
-                    zIndex: 0
-                  },
-                  track: {
-                    backgroundColor: '#1890ff'
-                  },
-                  rail: {
-                    backgroundColor: '#d9d9d9'
-                  },
-                  mark: {
-                    display: 'none'  // Hide default marks
-                  }
-                }}
-                className="z-1"
-              />
+              <div className="flex items-center space-x-4 w-full">
+                <div className="flex-grow flex items-center space-x-2">
+                  <AntSelect
+                    value={filterParams.startYear}
+                    onChange={handleStartYearChange}
+                    className="flex-1"
+                  >
+                    {Array.from({ length: schoolYearRange[1] - schoolYearRange[0] + 1 }, (_, i) => schoolYearRange[0] + i).map(year => (
+                      <AntSelect.Option key={year} value={year}>{`${year}-${year+1}`}</AntSelect.Option>
+                    ))}
+                  </AntSelect>
+                  <span>-</span>
+                  <AntSelect
+                    value={filterParams.startYear_1}
+                    onChange={handleEndYearChange}
+                    className="flex-1"
+                  >
+                    {Array.from({ length: schoolYearRange[1] - filterParams.startYear + 1 }, (_, i) => filterParams.startYear + i).map(year => (
+                      <AntSelect.Option key={year} value={year}>{`${year}-${year+1}`}</AntSelect.Option>
+                    ))}
+                  </AntSelect>
+                </div>
+              </div>
             </div>
 
             <div className="form-control">
