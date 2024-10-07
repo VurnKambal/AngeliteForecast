@@ -732,7 +732,7 @@ function InternalPage() {
                     {/* Plot Container */}
                     <div className="plot-container card shadow-md bg-base-100 border-2 border-accent">
                       <h2 className="text-lg font-semibold mb-1 text-primary px-4 py-3">
-                        {model.replaceAll("_", " ")} Plot:
+                        {model.replace("_", " ")} Plot:
                       </h2>
                       <div
                         id={`plot-${model}`}
