@@ -298,88 +298,91 @@ function InternalPage() {
         )
       );
 
-      const modelField = {
-        model: selectedModel,
+      const baseModelField = {
         major: formData.Major,
         year_level: formData.Year_Level,
         start_year: formData.Start_Year,
         semester: formData.Semester,
       };
 
-      const predictPayload = {
-        ...modelField,
-        processed_factors: cleanedProcessedFactors,
-        use_external_data: formData.UseExternalData,
-        admission_rate: formData.AdmissionRate,
-        cpi_education: formData.CPIEducation,
-        overall_hfce: formData.OverallHFCE,
-        hfce_education: formData.HFCEEducation,
-        inflation_rate_past: formData.InflationRatePast,
-        window_size:
-          selectedModel === "Moving_Average" ? movingAverageRange : null,
-      };
+      const models = ['Ensemble', 'Simple_Exponential_Smoothing', 'Moving_Average'];
+      const predictions = {};
 
-      try {
-        var predictionResult = await axios.post(
-          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/predict`,
-          predictPayload
-        );
-        const predictionsList = JSON.parse(predictionResult.data);
-        var lastPrediction = predictionsList[predictionsList.length - 1];
-        console.log("Last prediction:", lastPrediction.Previous_Semester);
-        lastPrediction = {
-          ...lastPrediction,
-          Prediction: Math.round(lastPrediction.Prediction),
-          Previous_Semester: Math.round(lastPrediction.Previous_Semester),
+      for (const model of models) {
+        const predictPayload = {
+          ...baseModelField,
+          model: model,
+          processed_factors: cleanedProcessedFactors,
+          use_external_data: formData.UseExternalData,
+          admission_rate: formData.AdmissionRate,
+          cpi_education: formData.CPIEducation,
+          overall_hfce: formData.OverallHFCE,
+          hfce_education: formData.HFCEEducation,
+          inflation_rate_past: formData.InflationRatePast,
+          window_size: model === "Moving_Average" ? movingAverageRange : null,
         };
-        setPredictionResult(lastPrediction);
 
-        // After successful prediction
-        setShowResults(true);
-        console.log("show results:", showResults);
-        console.log(lastPrediction);
-      } catch (error) {
-        console.error("Error submitting form:", error);
-        document.getElementById("Prediction").innerHTML =
-          "Error submitting form";
-      }
+        try {
+          const predictionResult = await axios.post(
+            `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/predict`,
+            predictPayload
+          );
+          console.log(predictionResult, "result")
+          const predictionsList = JSON.parse(predictionResult.data);
+          const lastPrediction = predictionsList[predictionsList.length - 1];
+          console.log(predictionsList)
+          predictions[model] = {
+            Prediction: Math.round(lastPrediction.Prediction),
+            Previous_Semester: Math.round(lastPrediction.Previous_Semester),
+            Attrition_Rate: lastPrediction.Attrition_Rate
+          };
 
-      try {
-        console.log("aaa", predictionResult);
-        const plotResponse = await axios.post(
-          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/plot`,
-          {
-            ...predictionResult.data,
-            ...modelField,
-          },
-          {
-            responseType: "blob", // Important for getting binary data
+          // Plot the predictions for this model
+          try {
+            const plotPayload = {
+              ...baseModelField,
+              model: model,
+            };
+
+            const plotResponse = await axios.post(
+              `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/plot`,
+              plotPayload,
+              {
+                responseType: "blob",
+              }
+            );
+
+            const plotBlob = new Blob([plotResponse.data], { type: "image/png" });
+            const plotUrl = URL.createObjectURL(plotBlob);
+
+            const plotImage = new Image();
+            plotImage.src = plotUrl;
+            plotImage.alt = `Enrollment trend for ${formData.Major} using ${model}`;
+            plotImage.hidden = false;
+
+            const plotDiv = document.getElementById(`plot-${model}`);
+            if (plotDiv) {
+              plotDiv.innerHTML = "";
+              plotDiv.appendChild(plotImage);
+            } else {
+              console.error(`Plot div for ${model} not found`);
+            }
+          } catch (error) {
+            console.error(`Error generating plot for ${model}:`, error);
+            const plotDiv = document.getElementById(`plot-${model}`);
+            if (plotDiv) {
+              plotDiv.innerHTML = `Error generating plot for ${model}`;
+            }
           }
-        );
-        console.log("Plot Response:", plotResponse.data);
-
-        // Create a URL for the blob
-        const plotBlob = new Blob([plotResponse.data], { type: "image/png" });
-        const plotUrl = URL.createObjectURL(plotBlob);
-
-        // Create an image element and set the src to the blob URL
-        const plotImage = new Image();
-        plotImage.src = plotUrl;
-        plotImage.alt = `Enrollment trend for ${formData.Major}`;
-        plotImage.hidden = false;
-
-        // Append the image to the plot div
-        const plotDiv = document.getElementById("plot");
-        plotDiv.innerHTML = ""; // Clear any existing content
-        plotDiv.appendChild(plotImage);
-      } catch (error) {
-        console.error(
-          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/plot Error submitting form:`,
-          error
-        );
-        document.getElementById("plot").innerHTML = "Error submitting form";
+        } catch (error) {
+          console.error(`Error predicting with ${model}:`, error);
+          predictions[model] = null;
+        }
       }
-      
+
+      setPredictionResult(predictions);
+      setShowResults(true);
+      console.log("Predictions:", predictions);
     } catch (error) {
       console.error("Error submitting form:", error);
       document.getElementById("Prediction").innerHTML = "Error submitting form";
@@ -532,39 +535,7 @@ function InternalPage() {
                   <option value="4th_Year">4th Year</option>
                 </select>
               </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text required">Model</span>
-                </label>
-                <select
-                  name="Model"
-                  value={selectedModel}
-                  onChange={handleModelChange}
-                  className="select select-bordered w-full"
-                  required
-                >
-                  <option value="" disabled>
-                    Select Model
-                  </option>
-                  <optgroup label="Tree-based Models">
-                    <option value="XGBoost">XGBoost</option>
-                    <option value="Random_Forest">Random Forest</option>
-                  </optgroup>
-                  <optgroup label="Ensemble Models">
-                    <option value="Ensemble">Ensemble</option>
-                  </optgroup>
-                  <optgroup label="Classical Models">
-                    <option value="Linear_Regression">Linear Regression</option>
-                    <option value="KNN">KNN</option>
-                  </optgroup>
-                  <optgroup label="Time Series Models">
-                    <option value="Moving_Average">Moving Average</option>
-                    <option value="Simple_Exponential_Smoothing">
-                      Simple Exponential Smoothing
-                    </option>
-                  </optgroup>
-                </select>
-              </div>
+              
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -726,55 +697,52 @@ function InternalPage() {
             <div className="divider"></div>
 
             {showResults && (
-              <div className="grid grid-cols-1 md:grid-cols-[25%,75%] gap-4">
-                {/* Prediction Container */}
-                <div className="prediction-container card shadow-md bg-info p-4">
-                  <h2 className="text-error font-semibold mb-2">Results:</h2>
-                  <div className="results-content">
-                    <div
-                      id="Prediction"
-                      className="text-neutral prediction-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
-                    >
-                      <h3 className="font-semibold mb-1">Prediction:</h3>
-                      {predictionResult.Prediction
-                        ? predictionResult.Prediction
-                        : "N/A"}
+              <div className="grid grid-cols-1 gap-4">
+                {Object.entries(predictionResult).map(([model, result]) => (
+                  <div key={model} className="grid grid-cols-1 md:grid-cols-[25%,75%] gap-4">
+                    {/* Prediction Container */}
+                    <div className="prediction-container card shadow-md bg-info p-4">
+                      <h2 className="text-error font-semibold mb-2">{model} Results:</h2>
+                      <div className="results-content">
+                        <div
+                          className="text-neutral prediction-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
+                        >
+                          <h3 className="font-semibold mb-1">Prediction:</h3>
+                          {result?.Prediction ?? "N/A"}
+                        </div>
+
+                        <div
+                          className="text-neutral previous-semester-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
+                        >
+                          <h3 className="font-semibold mb-1">Previous Semester:</h3>
+                          {result?.Previous_Semester ?? "N/A"}
+                        </div>
+
+                        <div
+                          className="text-neutral attrition-text p-4 bg-warning rounded-xl overflow-y-auto"
+                        >
+                          <h3 className="font-semibold mb-1">Attrition Rate:</h3>
+                          {result?.Attrition_Rate
+                            ? `${result.Attrition_Rate.toFixed(2)}%`
+                            : "N/A"}
+                        </div>
+                      </div>
                     </div>
 
-                    <div
-                      id="PreviousSemester"
-                      className="text-neutral previous-semester-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
-                    >
-                      <h3 className="font-semibold mb-1">Previous Semester:</h3>
-                      {predictionResult.Previous_Semester
-                        ? predictionResult.Previous_Semester
-                        : "N/A"}
-                    </div>
-
-                    <div
-                      id="AttritionRate"
-                      className="text-neutral attrition-text p-4 bg-warning rounded-xl overflow-y-auto"
-                    >
-                      <h3 className="font-semibold mb-1">Attrition Rate:</h3>
-                      {predictionResult.Attrition_Rate
-                        ? `${predictionResult.Attrition_Rate.toFixed(2)}%`
-                        : "N/A"}
+                    {/* Plot Container */}
+                    <div className="plot-container card shadow-md bg-base-100 border-2 border-accent">
+                      <h2 className="text-lg font-semibold mb-1 text-primary px-4 py-3">
+                        {model.replaceAll("_", " ")} Plot:
+                      </h2>
+                      <div
+                        id={`plot-${model}`}
+                        className="p-3 bg-base-100 rounded-xl overflow-hidden h-full"
+                      >
+                        {/* Plot content for this model will be inserted here */}
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Plot Container */}
-                <div className="plot-container card shadow-md bg-base-100 border-2 border-accent">
-                  <h2 className="text-lg font-semibold mb-1 text-primary px-4 py-3">
-                    Plot:
-                  </h2>
-                  <div
-                    id="plot"
-                    className="p-3 bg-base-100 rounded-xl overflow-hidden h-full"
-                  >
-                    {/* Plot content goes here */}
-                  </div>
-                </div>
+                ))}
               </div>
             )}
           </form>

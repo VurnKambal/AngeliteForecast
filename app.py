@@ -200,12 +200,13 @@ def plot():
     model_name = data.get('model')
     
     # Find the correct CSV file
-    csv_filename = f'prediction_results.csv'
+    # csv_filename = f'prediction_results.csv'
     # if not os.path.exists(csv_filename):
     #     return jsonify({"error": f"No prediction results found for {model_name} and {year_level}"}), 404
     
     # Read the prediction results from the SQL database
-    query = "SELECT * FROM model_result"
+    print(model_name, "modellll")
+    query = f"SELECT * FROM {model_name.lower()}_result"
     df = pd.read_sql(query, ENGINE)
     print(f"Prediction data:\n{df}\n\n")
     

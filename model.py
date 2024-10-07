@@ -908,8 +908,8 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
     # Concatenate predictions_df with major_data
     predictions_df = pd.concat([major_data[["Start_Year", "Semester", "Major"]], predictions_df], axis=1)
     
-    # Save the concatenated data to CSV
-    predictions_df.to_sql('model_result', engine, if_exists="replace", index=False)
+    # Save the concatenated data to SQL
+    predictions_df.to_sql(f'{selectedModel.lower()}_result', engine, if_exists="replace", index=False)
 
     predictions_df = predictions_df.merge(X_major[["Start_Year", "Semester", "Previous_Semester"]], on=["Start_Year", "Semester"])
     
