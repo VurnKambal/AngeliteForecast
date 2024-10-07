@@ -18,6 +18,7 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [registerObj, setRegisterObj] = useState(INITIAL_REGISTER_OBJ);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submitForm = async (e) => {
     e.preventDefault();
@@ -32,8 +33,8 @@ function Register() {
         await axios.post(`${API_BASE_URL}/api/register`, registerObj);
         window.location.href = '/app/welcome';
       } catch (error) {
-        console.log(error.response.data.errors[0].msg)
-        if (error.response && error.response.data && error.response.data.errors) {
+        console.log(error.response?.data?.errors?.[0]?.msg)
+        if (error.response?.data?.errors) {
           setErrorMessage(error.response.data.errors[0].msg);
         } else {
           setErrorMessage("Registration failed. Please try again.");
@@ -47,6 +48,20 @@ function Register() {
   const updateFormValue = ({ updateType, value }) => {
     setErrorMessage("");
     setRegisterObj({ ...registerObj, [updateType]: value });
+  };
+
+  const generatePassword = () => {
+    const length = 12;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    setRegisterObj(prev => ({ ...prev, password }));
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -72,12 +87,24 @@ function Register() {
                   updateFormValue={updateFormValue} 
                   placeholder="useremail@hau.edu.ph"
                 />
-                <InputText defaultValue={registerObj.password} type="password" updateType="password" containerStyle="mt-4" labelTitle="Password" updateFormValue={updateFormValue} />
-                <InputText defaultValue={registerObj.confirmPassword} type="password" updateType="confirmPassword" containerStyle="mt-4" labelTitle="Confirm Password" updateFormValue={updateFormValue} />
+                <InputText 
+                  defaultValue={registerObj.password} 
+                  type="password" 
+                  updateType="password" 
+                  containerStyle="mt-4" 
+                  labelTitle="Password" 
+                  updateFormValue={updateFormValue} 
+                  labelButton="Generate Password"
+                  onLabelButtonClick={generatePassword}
+                  showPassword={showPassword}
+                  togglePasswordVisibility={togglePasswordVisibility}
+                />
+                
+                <PasswordStrengthMeter password={registerObj.password} />
+
+                <ErrorText styleClass="mt-8 text-red-500">{errorMessage}</ErrorText>
+                <button type="submit" className={"btn mt-2 w-full btn-primary" + (loading ? " loading" : "")}>Register</button>
               </div>
-              <PasswordStrengthMeter password={registerObj.password} />
-              <ErrorText styleClass="mt-8 text-red-500">{errorMessage}</ErrorText>
-              <button type="submit" className={"btn mt-2 w-full btn-primary" + (loading ? " loading" : "")}>Register</button>
             </form>
           </div>
         </div>

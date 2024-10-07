@@ -28,11 +28,18 @@ function Login() {
       try {
         const response = await axios.post(`${API_BASE_URL}/api/login`, loginObj);
         localStorage.setItem("token", response.data.token);
-        window.location.href = '/app/welcome';
+        
+        if (response.data.isFirstLogin) {
+          // If it's the first login, show a message and redirect to password change page
+          alert(response.data.message || "Please change your password for security reasons.");
+          window.location.href = '/change-password';
+        } else {
+          // Regular login flow
+          window.location.href = '/app/welcome';
+        }
       } catch (error) {
         console.log(error);
         setErrorMessage("Invalid credentials. Please try again.");
-
       } finally {
         setLoading(false);
       }
