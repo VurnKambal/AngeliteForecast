@@ -42,16 +42,26 @@ function App() {
   useEffect(() => {
     localStorage.setItem('theme', 'mytheme');
     themeChange(false)
+    initializeApp()
+
     const initializeAuth = async () => {
-      const authResult = await checkAuth()
-      setIsAuthenticated(authResult)
-      if (authResult) {
+      const token = await checkAuth()
+      if (token) {
+        setIsAuthenticated(true)
         const adminStatus = await checkAdminStatus()
         setIsAdmin(adminStatus)
+      } else {
+        setIsAuthenticated(false)
+        setIsAdmin(false)
       }
       setLoading(false)
     }
     initializeAuth()
+
+    // Set up an interval to check auth status periodically
+    const authCheckInterval = setInterval(initializeAuth, 60000); // Check every minute
+
+    return () => clearInterval(authCheckInterval);
   }, [])
 
   if (loading) {
@@ -81,22 +91,22 @@ function App() {
             element={
               isAuthenticated ? (
                 route.adminOnly && !isAdmin ? (
-                  <Navigate to={token ? "/app/welcome" : "/login"} replace />
+                  <Navigate to="/app/welcome" replace />
                 ) : (
                   <route.component />
                 )
               ) : (
-                <Navigate to={token ? "/app/welcome" : "/login"} replace />
+                <Navigate to="/login" replace />
               )
             }
           />
         ))}
         
         {/* Place new routes over this */}
-        <Route path="/app/*" element={<Layout isAdmin={isAdmin} />} />
+        <Route path="/app/*" element={isAuthenticated ? <Layout isAdmin={isAdmin} /> : <Navigate to="/login" replace />} />
 
         {/* Fallback route */}
-        <Route path="*" element={<Navigate to={token ? "/app/welcome" : "/login"} replace />}/>
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/app/welcome" : "/login"} replace />}/>
       </Routes>
     </Router>
   )

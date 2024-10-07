@@ -1,38 +1,56 @@
 import axios from "axios"
+import { jwtDecode } from 'jwt-decode'; 
+
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const checkAuth = () => {
-/*  Getting token value stored in localstorage, if token is not present we will open login page 
-    for all internal dashboard routes  */
-    const TOKEN = localStorage.getItem("token")
-    const PUBLIC_ROUTES = ["login"]
+  const TOKEN = localStorage.getItem("token")
+  const PUBLIC_ROUTES = ["login"]
 
-    const isPublicPage = PUBLIC_ROUTES.some( r => window.location.href.includes(r))
+  const isPublicPage = PUBLIC_ROUTES.some(r => window.location.href.includes(r))
 
-    if(!TOKEN && !isPublicPage){
-        window.location.href = '/login'
-        return;
-    }else{
-        axios.defaults.headers.common['Authorization'] = `Bearer ${TOKEN}`
+  if (!TOKEN && !isPublicPage) {
+      window.location.href = '/login'
+      return null;
+  } else if (TOKEN) {
+      try {
+          const decodedToken = jwtDecode(TOKEN);
+          const currentTime = Date.now() / 1000;
 
-        axios.interceptors.request.use(function (config) {
-            // UPDATE: Add this code to show global loading indicator
-            document.body.classList.add('loading-indicator');
-            return config
+          if (decodedToken.exp < currentTime) {
+              // Token has expired
+              localStorage.removeItem("token");
+              window.location.href = '/login'
+              return null;
+          }
+
+          // Token is valid
+          axios.defaults.headers.common['Authorization'] = `Bearer ${TOKEN}`
+
+          axios.interceptors.request.use(function (config) {
+              document.body.classList.add('loading-indicator');
+              return config
           }, function (error) {
-            return Promise.reject(error);
+              return Promise.reject(error);
           });
-          
+        
           axios.interceptors.response.use(function (response) {
-            // UPDATE: Add this code to hide global loading indicator
-            document.body.classList.remove('loading-indicator');
-            return response;
+              document.body.classList.remove('loading-indicator');
+              return response;
           }, function (error) {
-            document.body.classList.remove('loading-indicator');
-            return Promise.reject(error);
+              document.body.classList.remove('loading-indicator');
+              return Promise.reject(error);
           });
-        return TOKEN
-    }
+
+          return TOKEN;
+      } catch (error) {
+          console.error("Invalid token:", error);
+          localStorage.removeItem("token");
+          window.location.href = '/login'
+          return null;
+      }
+  }
+  return null;
 }
 
 export default checkAuth
