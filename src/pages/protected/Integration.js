@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { setPageTitle } from "../../features/common/headerSlice";
 import axios from "axios";
+import InteractivePlot from '../../components/InteractivePlot';
 
 import DashboardStats from "../../features/dashboard/components/DashboardStats";
 import TitleCard from "../../components/Cards/TitleCard";
@@ -48,6 +49,7 @@ function InternalPage() {
   const [statsData, setStatsData] = useState([]);
 
   const [showResults, setShowResults] = useState(false);
+  const [plotData, setPlotData] = useState({});
 
 
   useEffect(() => {
@@ -307,6 +309,7 @@ function InternalPage() {
 
       const models = ['Ensemble', 'Simple_Exponential_Smoothing', 'Moving_Average'];
       const predictions = {};
+      const newPlotData = {};
 
       for (const model of models) {
         const predictPayload = {
@@ -337,7 +340,7 @@ function InternalPage() {
             Attrition_Rate: lastPrediction.Attrition_Rate
           };
 
-          // Plot the predictions for this model
+          // Fetch plot data
           try {
             const plotPayload = {
               ...baseModelField,
@@ -345,34 +348,13 @@ function InternalPage() {
             };
 
             const plotResponse = await axios.post(
-              `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/plot`,
-              plotPayload,
-              {
-                responseType: "blob",
-              }
+              `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot-data`,
+              plotPayload
             );
 
-            const plotBlob = new Blob([plotResponse.data], { type: "image/png" });
-            const plotUrl = URL.createObjectURL(plotBlob);
-
-            const plotImage = new Image();
-            plotImage.src = plotUrl;
-            plotImage.alt = `Enrollment trend for ${formData.Major} using ${model}`;
-            plotImage.hidden = false;
-
-            const plotDiv = document.getElementById(`plot-${model}`);
-            if (plotDiv) {
-              plotDiv.innerHTML = "";
-              plotDiv.appendChild(plotImage);
-            } else {
-              console.error(`Plot div for ${model} not found`);
-            }
+            newPlotData[model] = plotResponse.data;
           } catch (error) {
-            console.error(`Error generating plot for ${model}:`, error);
-            const plotDiv = document.getElementById(`plot-${model}`);
-            if (plotDiv) {
-              plotDiv.innerHTML = `Error generating plot for ${model}`;
-            }
+            console.error(`Error fetching plot data for ${model}:`, error);
           }
         } catch (error) {
           console.error(`Error predicting with ${model}:`, error);
@@ -381,6 +363,7 @@ function InternalPage() {
       }
 
       setPredictionResult(predictions);
+      setPlotData(newPlotData);
       setShowResults(true);
       console.log("Predictions:", predictions);
     } catch (error) {
@@ -738,7 +721,14 @@ function InternalPage() {
                         id={`plot-${model}`}
                         className="p-3 bg-base-100 rounded-xl overflow-hidden h-full"
                       >
-                        {/* Plot content for this model will be inserted here */}
+                        {plotData[model] && (
+                          <InteractivePlot
+                            data={plotData[model]}
+                            yearLevel={formData.Year_Level}
+                            major={formData.Major}
+                            modelName={model}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>

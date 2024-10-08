@@ -331,7 +331,7 @@ def clean_data(engine, df):
     df = df.groupby(['Start_Year', 'Semester', 'Major', 'Department'], as_index=False).sum(["1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year", "Grade_12", "TOTAL"])
     
     
-
+    df = df[~df['Department'].isin(['GS', 'JHS', 'MA', 'HAUSPELL'])]
     df.to_sql("processed_data", engine, if_exists="replace", index=False)
     return df
 
@@ -834,7 +834,10 @@ def make_predictions(engine, selectedModel, models, data, start_year, semester, 
             }
         case "moving_average":
             # Define the window size for the moving average
-
+            # if window_size is None:
+            
+            # 2-Year = 4-Semesters Window
+            window_size = 4
             # Ensure we have enough data points for the moving average
             if len(y_major_train) < window_size:
                 print(f"Warning: Not enough data points for moving average. Using all available data.")

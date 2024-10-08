@@ -274,6 +274,50 @@ def plot():
     
     return send_file(img, mimetype='image/png')
 
+@app.route('/api/plot-data', methods=['POST'])
+def plot_data():
+    data = request.json
+    year_level = data.get('year_level', '1st_Year')
+    major = data.get('major')
+    model_name = data.get('model')
+    
+    # Read the prediction results from the SQL database
+    query = f"SELECT * FROM {model_name.lower()}_result"
+    df = pd.read_sql(query, ENGINE)
+    
+    # Get actual values of major data from the database
+    query = f"""
+    SELECT "Start_Year", "Semester", "{year_level}"
+    FROM processed_data
+    WHERE "Major" = '{major}'
+    ORDER BY "Start_Year", "Semester"
+    """
+    major_data = pd.read_sql(query, ENGINE)
+    
+    # Map semester to month
+    semester_to_month = {1: 6, 2: 11}
+    df[["Start_Year", "Semester"]] = df[["Start_Year", "Semester"]].astype(int)
+    major_data[["Start_Year", "Semester"]] = major_data[["Start_Year", "Semester"]].astype(int)
+    
+    # Create a new column 'Date' by combining Start_Year and Semester
+    major_data['Date'] = pd.to_datetime(major_data['Start_Year'].astype(str) + '-' + 
+                                        major_data['Semester'].map(semester_to_month).astype(str) + '-01')
+    df['Date'] = pd.to_datetime(df['Start_Year'].astype(str) + '-' + 
+                                df['Semester'].map(semester_to_month).astype(str) + '-01')
+    
+    major_data = major_data.sort_values('Date')
+    df = df.sort_values('Date')
+
+    # Prepare data for JSON response
+    actual = major_data[['Date', year_level]].to_dict('records')
+    train_prediction = df[df['Is_Train']][['Date', 'Prediction']].to_dict('records')
+    test_prediction = df[~df['Is_Train']][['Date', 'Prediction']].to_dict('records')
+
+    return jsonify({
+        'actual': actual,
+        'trainPrediction': train_prediction,
+        'testPrediction': test_prediction
+    })
 
 # Update model hashes
 from hash import update_model_hashes
