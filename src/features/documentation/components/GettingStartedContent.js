@@ -68,7 +68,7 @@ function GettingStartedContent() {
         </ul> */}
 
         {/* Tailwind CSS*/}
-        <h2 id="getstarted2">Installation</h2>
+        {/* <h2 id="getstarted2">Installation</h2>
 
         <p>
           Just clone the repository from github and then run following command (Make
@@ -84,7 +84,7 @@ function GettingStartedContent() {
           <code>npm install</code>
           <br />
           <code>npm start</code>
-        </p>
+        </p> */}
 
 {/*         <h4> Core libraries used - </h4>
         <ul>
@@ -199,7 +199,7 @@ function GettingStartedContent() {
         </div>
 
         {/* Chart JS */}
-        <h2 id="getstarted4">Forecasting Algorithms</h2>
+        {/* <h2 id="getstarted4">Forecasting Algorithms</h2>
         <ul>
           <li>
             {" "}
@@ -229,7 +229,7 @@ function GettingStartedContent() {
             {" "}
             <span className="font-bold">Ensemble:</span> Combines multiple models (e.g., Random Forest, SES) to leverage the strengths of each.
           </li>
-        </ul>
+        </ul> */}
       </article>
     </>
   );
