@@ -65,7 +65,7 @@ function BarChart() {
   };
 
   return (
-    <TitleCard title={""} topMargin="mt-2">
+    <TitleCard title={"Enrollment by Semester"} topMargin="mt-2">
       <Bar options={options} data={data} />
     </TitleCard>
   );
