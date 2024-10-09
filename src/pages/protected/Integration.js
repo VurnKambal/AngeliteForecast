@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { setPageTitle } from "../../features/common/headerSlice";
 import axios from "axios";
-import InteractivePlot from '../../components/InteractivePlot';
+import { useDropzone } from 'react-dropzone';
 
 import DashboardStats from "../../features/dashboard/components/DashboardStats";
 import TitleCard from "../../components/Cards/TitleCard";
@@ -10,6 +10,7 @@ import UserGroupIcon from "@heroicons/react/24/outline/UserGroupIcon";
 import UsersIcon from "@heroicons/react/24/outline/UsersIcon";
 import CircleStackIcon from "@heroicons/react/24/outline/CircleStackIcon";
 import CreditCardIcon from "@heroicons/react/24/outline/CreditCardIcon";
+import InteractivePlot from "../../components/InteractivePlot";
 
 function InternalPage() {
   const dispatch = useDispatch();
@@ -49,8 +50,116 @@ function InternalPage() {
   const [statsData, setStatsData] = useState([]);
 
   const [showResults, setShowResults] = useState(false);
+
+  const [batchPredictionResults, setBatchPredictionResults] = useState({});
+  const [batchPlotData, setBatchPlotData] = useState({});
+  const [showBatchResults, setShowBatchResults] = useState(false);
+
+  const [file, setFile] = useState(null);
+
   const [plotData, setPlotData] = useState({});
 
+  const onDrop = useCallback((acceptedFiles) => {
+    setFile(acceptedFiles[0]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: '.csv',
+    multiple: false
+  });
+
+  const uploadCSV = async () => {
+    if (!file) {
+      console.error("No file selected");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      // Upload CSV and get processed data
+      const uploadResponse = await axios.post(
+        `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/upload-csv`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      console.log(uploadResponse.data)
+      if (uploadResponse.data.status !== "success" || !uploadResponse.data.processed_data) {
+        console.error("Error processing CSV data:", uploadResponse.data);
+        return;
+      }
+
+      const processedData = JSON.parse(uploadResponse.data.processed_data);
+      const batchPredictions = {};
+      const batchPlotData = {};
+      console.log(processedData, "processed")
+      for (const year_level in processedData){
+        const data = processedData[year_level]
+        console.log("data:", data)
+        const dataPredictions = {};
+
+        const predictPayload = {
+          year_level: year_level,
+          start_year: data[data.length - 1].Start_Year,
+          semester: data[data.length - 1].Semester,
+          processed_factors: data,
+        };
+
+        try {
+          // Make prediction
+          const predictionResult = await axios.post(
+            `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/predict-batch`,
+            predictPayload
+          );
+          
+
+        } catch (error) {
+          console.log(error)
+        }
+        
+
+        const dataKey = `${year_level}_${data.Start_Year}_${data.Semester}`;
+        batchPredictions[dataKey] = dataPredictions;
+      }
+
+
+    
+
+      // Call the compile-csv API after the prediction loop
+      try {
+        const response = await axios.get(
+          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/compile-csv`,
+          { responseType: 'blob' }
+        );
+        
+        // Create a URL for the blob
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        
+        // Create a link element and trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'prediction_results.csv');
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        link.parentNode.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Error downloading CSV:", error);
+        // Handle error (e.g., show error message to user)
+      }
+    } catch (error) {
+      console.error("Error processing CSV and making predictions:", error);
+      // Handle error (e.g., show error message to user)
+    }
+  };
 
   useEffect(() => {
     const fetchStatsData = async () => {
@@ -214,7 +323,7 @@ function InternalPage() {
             prevData.InflationRatePast || latestData.InflationRatePast,
           AdmissionRate: prevData.AdmissionRate || latestData.AdmissionRate,
           OverallHFCE: prevData.OverallHFCE || latestData.OverallHFCE,
-          HFCEEducation: prevData.HFCEEducation || latestData.HFCEEducation,
+          HFCEEducation: prevData.HFCEEducation || latestData.HFCEducation,
         }));
         setLatestExternalData(latestData);
       }
@@ -242,7 +351,7 @@ function InternalPage() {
             prevData.InflationRatePast || latestData.InflationRatePast,
           AdmissionRate: prevData.AdmissionRate || latestData.AdmissionRate,
           OverallHFCE: prevData.OverallHFCE || latestData.OverallHFCE,
-          HFCEEducation: prevData.HFCEEducation || latestData.HFCEEducation,
+          HFCEEducation: prevData.HFCEEducation || latestData.HFCEducation,
         }));
         setLatestExternalData(latestData);
       }
@@ -306,7 +415,7 @@ function InternalPage() {
         start_year: formData.Start_Year,
         semester: formData.Semester,
       };
-
+      console.log(formData.Year_Level)
       const models = ['Ensemble', 'Simple_Exponential_Smoothing', 'Moving_Average'];
       const predictions = {};
       const newPlotData = {};
@@ -340,7 +449,6 @@ function InternalPage() {
             Attrition_Rate: lastPrediction.Attrition_Rate
           };
 
-          // Fetch plot data
           try {
             const plotPayload = {
               ...baseModelField,
@@ -348,13 +456,14 @@ function InternalPage() {
             };
 
             const plotResponse = await axios.post(
-              `${process.env.REACT_APP_PYTHON_API_BASE_URL}/api/plot-data`,
+              `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/plot-data`,
               plotPayload
             );
 
             newPlotData[model] = plotResponse.data;
           } catch (error) {
             console.error(`Error fetching plot data for ${model}:`, error);
+            newPlotData[model] = null;
           }
         } catch (error) {
           console.error(`Error predicting with ${model}:`, error);
@@ -366,6 +475,7 @@ function InternalPage() {
       setPlotData(newPlotData);
       setShowResults(true);
       console.log("Predictions:", predictions);
+      console.log("Plot Data:", newPlotData);
     } catch (error) {
       console.error("Error submitting form:", error);
       document.getElementById("Prediction").innerHTML = "Error submitting form";
@@ -673,6 +783,35 @@ function InternalPage() {
               </div>
             )}
 
+            {/* Add CSV upload section */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Upload CSV for Batch Prediction</span>
+              </label>
+              <div {...getRootProps()} className="dropzone">
+                <input {...getInputProps()} />
+                <div className="text-center p-10 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400">
+                  {isDragActive ? (
+                    <p>Drop the CSV file here...</p>
+                  ) : (
+                    <p>Drag and drop a CSV file here, or click to select a file</p>
+                  )}
+                </div>
+              </div>
+              {file && (
+                <div className="mt-2">
+                  <p>Selected file: {file.name}</p>
+                  <button 
+                    type="button" 
+                    onClick={uploadCSV} 
+                    className="btn btn-primary mt-2"
+                  >
+                    Process and Download Batch Predictions
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button type="submit" className="btn btn-primary">
               Submit
             </button>
@@ -685,7 +824,7 @@ function InternalPage() {
                   <div key={model} className="grid grid-cols-1 md:grid-cols-[25%,75%] gap-4">
                     {/* Prediction Container */}
                     <div className="prediction-container card shadow-md bg-info p-4">
-                      <h2 className="text-error font-semibold mb-2">{model} Results:</h2>
+                      <h2 className="text-error font-semibold mb-2">{model.replaceAll("_", " ")} Results:</h2>
                       <div className="results-content">
                         <div
                           className="text-neutral prediction-text p-4 bg-warning rounded-xl overflow-y-auto mb-2"
@@ -715,7 +854,7 @@ function InternalPage() {
                     {/* Plot Container */}
                     <div className="plot-container card shadow-md bg-base-100 border-2 border-accent">
                       <h2 className="text-lg font-semibold mb-1 text-primary px-4 py-3">
-                        {model.replace("_", " ")} Plot:
+                        {model.replaceAll("_", " ")} Plot:
                       </h2>
                       <div
                         id={`plot-${model}`}
@@ -731,6 +870,26 @@ function InternalPage() {
                         )}
                       </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Display batch results */}
+            {showBatchResults && (
+              <div className="mt-6">
+                <h2 className="text-xl font-bold mb-4">Batch Prediction Results</h2>
+                {Object.entries(batchPredictionResults).map(([rowKey, rowPredictions]) => (
+                  <div key={rowKey} className="mb-4 p-4 border rounded">
+                    <h3 className="font-semibold">{rowKey}</h3>
+                    {Object.entries(rowPredictions).map(([model, prediction]) => (
+                      <div key={model} className="mt-2">
+                        <h4 className="font-medium">{model}</h4>
+                        <p>Prediction: {prediction.Prediction}</p>
+                        <p>Previous Semester: {prediction.Previous_Semester}</p>
+                        <p>Attrition Rate: {prediction.Attrition_Rate}%</p>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>

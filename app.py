@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 import os
 import io
@@ -10,10 +11,10 @@ import matplotlib.pyplot as plt
 import joblib
 from dotenv import load_dotenv
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
-from model import initialize_models, preprocess_data
-from model import make_predictions, train_models
+from model import initialize_models, preprocess_data, preprocess_data_batch
+from model import make_predictions, make_predictions_batch, train_models
 
 load_dotenv()
 
@@ -127,13 +128,21 @@ def predict():
     df = pd.DataFrame(processed_factors)
    
     
-    selectedModel = data['model']
-    start_year = data["start_year"]
-    semester = data["semester"]
     year_level = data["year_level"]
     window_size = data["window_size"]
-    prediction = make_predictions(ENGINE, selectedModel, models, df, start_year, semester,
-                                  year_level, window_size=window_size)
+    print(year_level, "yearrrrrrrr")
+    isBatch = data.get("isBatch", False)
+    print(isBatch)
+    if isBatch is False:
+        selectedModel = data['model']
+        start_year = data["start_year"]
+        semester = data["semester"]
+        prediction = make_predictions(ENGINE, selectedModel, models, df, start_year, semester,
+                                      year_level, window_size=window_size)
+    else:
+        print("Batchhh")
+        prediction = make_predictions_batch(ENGINE, models, year_level, window_size=window_size)
+        print("finished batch", year_level)
     print("prediction", prediction)
     return jsonify(prediction.to_json(orient='records')), 200
 
@@ -274,7 +283,7 @@ def plot():
     
     return send_file(img, mimetype='image/png')
 
-@app.route('/api/plot-data', methods=['POST'])
+@app.route('/python/plot-data', methods=['POST'])
 def plot_data():
     data = request.json
     year_level = data.get('year_level', '1st_Year')
@@ -327,6 +336,213 @@ try:
     print("Successfully updated model hashes")
 except Exception as e:
     print(f"Error updating model hashes: {e}")
+
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'csv'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+
+# Update the upload_csv function to use preprocess_data_batch
+@app.route('/python/upload-csv', methods=['POST'])
+def upload_csv():
+    global models, enrollment_df, cpi_df, inflation_df, admission_df, hfce_df
+    print("Csv_processingggg")
+    if len(models) == 0:
+        models = initialize_models()
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "No file part"}), 400
+    
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({"status": "error", "message": "No selected file"}), 400
+    
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        try:
+            new_data = pd.read_csv(filepath)
+            
+            # Ensure the data has been queried
+            if enrollment_df is None:
+                query_data(ENGINE)
+
+            # Convert Start_Year and Semester to integers
+            numerical_features = ["Start_Year", "Semester"]
+            new_data[numerical_features] = new_data[numerical_features].astype(int)
+            
+
+            # Prepare external data (assuming it's included in the CSV)
+            external_data_columns = ['AdmissionRate', 'CPIEducation', 'OverallHFCE', 'HFCEEducation', 'InflationRatePast']
+            use_external_data = any(col in new_data.columns for col in external_data_columns)
+            external_data = {col: new_data[col].iloc[0] for col in external_data_columns if col in new_data.columns}
+
+            processed_data = {}
+            for year_level in ["1st_Year", "2nd_Year", "3rd_Year", "4th_Year"]:
+                # Process the data
+                print(year_level, "processing")
+                processed = preprocess_data_batch(
+                    ENGINE, 
+                    new_data, 
+                    enrollment_df, 
+                    cpi_df, 
+                    inflation_df, 
+                    admission_df, 
+                    hfce_df, 
+                    year_level=year_level,
+                    use_external_data=use_external_data,
+                    external_data=external_data
+                )
+                # Convert DataFrame to dict
+                processed_data[year_level] = processed.to_dict(orient='records')
+
+            # Clean up the uploaded file
+            os.remove(filepath)
+            return jsonify({
+                "status": "success",
+                "message": "Processed CSV",
+                'processed_data': json.dumps(processed_data)
+            }), 200
+        
+        except Exception as e:
+            print("Error processing CSV:", e)
+            # Clean up the uploaded file in case of an error
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return jsonify({"status": "error", "message": str(e)}), 500
+    
+    return jsonify({"status": "error", "message": "Invalid file type"}), 400
+
+import joblib
+
+
+@app.route('/python/compile-csv', methods=['GET'])
+def compile_csv():
+    try:
+        # SQL query to fetch data from all year levels
+        query = """
+        SELECT 
+            '1st Year' as "Year_Level", "Major", "Start_Year", "Semester", 
+            "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+        FROM "1st_Year_predictions_result"
+        UNION ALL
+        SELECT 
+            '2nd Year' as "Year_Level", "Major", "Start_Year", "Semester", 
+            "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+        FROM "2nd_Year_predictions_result"
+        UNION ALL
+        SELECT 
+            '3rd Year' as "Year_Level", "Major", "Start_Year", "Semester", 
+            "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+        FROM "3rd_Year_predictions_result"
+        UNION ALL
+        SELECT 
+            '4th Year' as "Year_Level", "Major", "Start_Year", "Semester", 
+            "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+        FROM "4th_Year_predictions_result"
+        ORDER BY "Major", "Year_Level", "Start_Year", "Semester"
+        """
+
+        # Execute the query and load results into a DataFrame
+        df = pd.read_sql(text(query), ENGINE)
+        print("compiling csv")
+        print(df.head())
+
+        try:
+            # Create a buffer to store the CSV file
+            buffer = io.StringIO()
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+
+            # Send the CSV file
+            return send_file(
+                io.BytesIO(buffer.getvalue().encode()),
+                mimetype='text/csv',
+                as_attachment=True,
+                download_name='predictions_result.csv'  # Changed from attachment_filename
+
+            )
+
+        except Exception as e:
+            print("error:", e)
+            return jsonify({'error': str(e)}), 500
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/python/predict-batch', methods=['POST'])
+def predict_batch():
+    try:
+        data = request.get_json()
+        # print(data, "dataaaa")
+      
+        
+        print("Batchhhh")
+        start_year = data["start_year"]
+        semester = data["semester"]
+        window_size = data.get("window_size", 4)  # Use get() in case it's not provided
+        
+        # Load columns from columns.pkl
+        columns_dict = joblib.load('data/columns.pkl')
+        
+        # Get unique majors from the data
+        year_levels = ["1st_Year", "2nd_Year", "3rd_Year", "4th_Year"]
+        
+        all_predictions = []
+        
+        for year_level in year_levels:
+            print(year_level, "Predicting Batch")
+            processed_factors = pd.read_sql(f'SELECT * FROM "{year_level}_processed_data"', ENGINE)
+           
+            # Get the correct columns for this year level
+            correct_columns = columns_dict.get(year_level, [])
+            
+            processed_factors = processed_factors[correct_columns]
+
+            # Reindex the DataFrame to include only the correct columns
+            processed_factors = processed_factors.reindex(columns=correct_columns, fill_value=0)
+            
+            prediction_data = {
+                'processed_factors': processed_factors.to_dict(orient='records'),
+                'start_year': start_year,
+                'semester': semester,
+                'year_level': year_level,
+                'window_size': window_size,
+                'isBatch': True
+            }
+            
+            # Use the existing predict() function
+            with app.test_request_context(json=prediction_data):
+                response = predict()
+                prediction = json.loads(response[0].get_data(as_text=True))
+            
+            # Convert prediction to a list if it's not already
+            
+            if isinstance(prediction, str):
+                prediction = json.loads(prediction)
+            # Add Major and Year_Level to the prediction
+            for pred in prediction:
+                pred['Year_Level'] = year_level
+            
+            # print(all_predictions,"allll")
+            all_predictions.extend([prediction])
+        
+        # Convert all_predictions to a DataFrame
+        final_predictions = pd.DataFrame(all_predictions)
+        
+        # print("Batch predictions:", final_predictions)
+        return jsonify(final_predictions.to_dict(orient='records')), 200
+    except Exception as e:
+        print(e, "error")
+
+
 
 if __name__ == '__main__':
 
