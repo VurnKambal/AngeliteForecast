@@ -425,15 +425,10 @@ def upload_csv():
 import joblib
 
 def summarize_batch():
+    
     query = """
-    SELECT 
-        "Year_Level",
-        "Department",
-        SUM("Previous_Semester") AS "Total_Previous_Semester",
-        SUM("Prediction_Ensemble") AS "Total_Prediction_Ensemble",
-        SUM("Prediction_SES") AS "Total_Prediction_SES",
-        SUM("Prediction_MA") AS "Total_Prediction_MA"
-    FROM (SELECT 
+    WITH all_predictions AS (
+        SELECT 
             '1st Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester", 
             "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
         FROM "1st_Year_predictions_result"
@@ -452,13 +447,37 @@ def summarize_batch():
             '4th Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester",
             "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
         FROM "4th_Year_predictions_result"
-        ORDER BY  "Department", "Major", "Year_Level", "Start_Year", "Semester")
-    GROUP BY "Department", "Year_Level"
-    ORDER BY "Department", "Year_Level" 
+    ),
+    summarized_data AS (
+        SELECT 
+            "Year_Level",
+            'HAU' AS "Department",
+            SUM("Previous_Semester") AS "Total_Previous_Semester",
+            SUM("Prediction_Ensemble") AS "Total_Prediction_Ensemble",
+            SUM("Prediction_SES") AS "Total_Prediction_SES",
+            SUM("Prediction_MA") AS "Total_Prediction_MA"
+        FROM all_predictions
+        GROUP BY "Year_Level"
+        UNION ALL
+        SELECT 
+            "Year_Level",
+            "Department",
+            SUM("Previous_Semester") AS "Total_Previous_Semester",
+            SUM("Prediction_Ensemble") AS "Total_Prediction_Ensemble",
+            SUM("Prediction_SES") AS "Total_Prediction_SES",
+            SUM("Prediction_MA") AS "Total_Prediction_MA"
+        FROM all_predictions
+        GROUP BY "Department", "Year_Level"
+    )
+    SELECT *
+    FROM summarized_data
+    ORDER BY 
+        CASE WHEN "Department" = 'HAU' THEN 0 ELSE 1 END,
+        "Department",
+        "Year_Level"
     """
-    
+
     result = pd.read_sql(text(query), ENGINE)
-    
     return result.to_dict(orient='records')
 
 @app.route('/python/summarize-batch', methods=['GET'])

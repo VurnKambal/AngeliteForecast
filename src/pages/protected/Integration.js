@@ -89,6 +89,8 @@ function InternalPage() {
     formData.append("file", file);
 
     try {
+      setShowResults(false);
+
       setIsBatchProcessing(true);
 
       // Upload CSV and get processed data
@@ -170,6 +172,7 @@ function InternalPage() {
         // window.URL.revokeObjectURL(url);
 
         setShowBatchResults(true);
+
         console.log("batch result")
       } catch (error) {
         console.error("Error downloading CSV:", error);
@@ -408,6 +411,8 @@ function InternalPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setShowBatchResults(false);
+
       const processFactorsResponse = await axios.post(
         `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/process-data`,
         formData
@@ -497,6 +502,7 @@ function InternalPage() {
       setPredictionResult(predictions);
       setPlotData(newPlotData);
       setShowResults(true);
+
       console.log("Predictions:", predictions);
       console.log("Plot Data:", newPlotData);
     } catch (error) {
@@ -976,7 +982,7 @@ function InternalPage() {
 
             {isBatchProcessing && (
               <div className="mt-6">
-                <p>Processing batch predictions... Please wait.</p>
+                <p>Processing Batch Predictions... Please wait.</p>
               </div>
             )}
           </form>
