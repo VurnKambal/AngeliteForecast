@@ -59,6 +59,10 @@ function InternalPage() {
 
   const [plotData, setPlotData] = useState({});
 
+  const [batchSummary, setBatchSummary] = useState([]);
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+
+
   const onDrop = useCallback((acceptedFiles) => {
     setFile(acceptedFiles[0]);
   }, []);
@@ -79,6 +83,8 @@ function InternalPage() {
     formData.append("file", file);
 
     try {
+      setIsBatchProcessing(true);
+
       // Upload CSV and get processed data
       const uploadResponse = await axios.post(
         `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/upload-csv`,
@@ -123,8 +129,8 @@ function InternalPage() {
           console.log(error)
         }
         
-
-        const dataKey = `${year_level}_${data.Start_Year}_${data.Semester}`;
+       
+        const dataKey = `${year_level}_${data[data.length - 1].Start_Year}_${data[data.length - 1].Semester}`;
         batchPredictions[dataKey] = dataPredictions;
       }
 
@@ -148,15 +154,21 @@ function InternalPage() {
         document.body.appendChild(link);
         link.click();
         
-        // Clean up
-        link.parentNode.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        // // Clean up
+        // link.parentNode.removeChild(link);
+        // window.URL.revokeObjectURL(url);
+
+        setShowBatchResults(true);
+        console.log("batch result")
       } catch (error) {
         console.error("Error downloading CSV:", error);
         // Handle error (e.g., show error message to user)
+      } finally {
+        setIsBatchProcessing(false);
       }
     } catch (error) {
       console.error("Error processing CSV and making predictions:", error);
+      setIsBatchProcessing(false);
       // Handle error (e.g., show error message to user)
     }
   };
@@ -482,6 +494,23 @@ function InternalPage() {
     }
   };
 
+  useEffect(() => {
+    console.log(showBatchResults)
+    if (showBatchResults) {
+      fetchBatchSummary();
+    }
+  }, [showBatchResults]);
+
+  const fetchBatchSummary = async () => {
+    try {
+      console.log("summarizing")
+      const response = await axios.get(`${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/summarize-batch`);
+      setBatchSummary(response.data);
+    } catch (error) {
+      console.error('Error fetching batch summary:', error);
+    }
+  };
+
   // Modify the school year options generation
   const schoolYearOptions = [];
   if (latestSchoolYear) {
@@ -494,6 +523,16 @@ function InternalPage() {
     console.log(model);
     const timeSeriesModels = ["Moving_Average", "Simple_Exponential_Smoothing"];
     return timeSeriesModels.includes(model);
+  };
+
+  const groupByDepartment = (summary) => {
+    return summary.reduce((acc, item) => {
+      if (!acc[item.Department]) {
+        acc[item.Department] = {};
+      }
+      acc[item.Department][item.Year_Level] = item;
+      return acc;
+    }, {});
   };
 
   return (
@@ -876,22 +915,48 @@ function InternalPage() {
             )}
 
             {/* Display batch results */}
-            {showBatchResults && (
+            {showBatchResults && !isBatchProcessing && (
               <div className="mt-6">
-                <h2 className="text-xl font-bold mb-4">Batch Prediction Results</h2>
-                {Object.entries(batchPredictionResults).map(([rowKey, rowPredictions]) => (
-                  <div key={rowKey} className="mb-4 p-4 border rounded">
-                    <h3 className="font-semibold">{rowKey}</h3>
-                    {Object.entries(rowPredictions).map(([model, prediction]) => (
-                      <div key={model} className="mt-2">
-                        <h4 className="font-medium">{model}</h4>
-                        <p>Prediction: {prediction.Prediction}</p>
-                        <p>Previous Semester: {prediction.Previous_Semester}</p>
-                        <p>Attrition Rate: {prediction.Attrition_Rate}%</p>
-                      </div>
-                    ))}
-                  </div>
-                ))}
+                <h2 className="text-xl font-bold mb-4">Batch Prediction Summary</h2>
+                <div className="overflow-x-auto">
+                  <table className="table table-compact w-full">
+                    <thead>
+                      <tr>
+                        <th>Department</th>
+                        {['1st Year', '2nd Year', '3rd Year', '4th Year'].map(year => (
+                          <th key={year}>{year}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(groupByDepartment(batchSummary)).map(([department, yearData]) => (
+                        <tr key={department}>
+                          <td className="font-semibold">{department}</td>
+                          {['1st Year', '2nd Year', '3rd Year', '4th Year'].map(year => (
+                            <td key={year} className="p-2">
+                              {yearData[year] ? (
+                                <div>
+                                  <p>Previous: {yearData[year].Total_Previous_Semester.toFixed(2)}</p>
+                                  <p>Ensemble: {yearData[year].Total_Prediction_Ensemble.toFixed(2)}</p>
+                                  <p>SES: {yearData[year].Total_Prediction_SES.toFixed(2)}</p>
+                                  <p>MA: {yearData[year].Total_Prediction_MA.toFixed(2)}</p>
+                                </div>
+                              ) : (
+                                'N/A'
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {isBatchProcessing && (
+              <div className="mt-6">
+                <p>Processing batch predictions... Please wait.</p>
               </div>
             )}
           </form>

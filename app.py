@@ -422,6 +422,32 @@ def upload_csv():
 
 import joblib
 
+def summarize_batch():
+    query = """
+    SELECT 
+        "Year_Level",
+        "Department",
+        SUM("Previous_Semester") AS "Total_Previous_Semester",
+        SUM("Prediction_Ensemble") AS "Total_Prediction_Ensemble",
+        SUM("Prediction_SES") AS "Total_Prediction_SES",
+        SUM("Prediction_MA") AS "Total_Prediction_MA"
+    FROM predictions_result
+    GROUP BY "Department", "Year_Level"
+    ORDER BY "Department", "Year_Level" 
+    """
+    
+    result = pd.read_sql(text(query), ENGINE)
+    return result.to_dict(orient='records')
+
+@app.route('/python/summarize-batch', methods=['GET'])
+def get_batch_summary():
+    try:
+        print("summarizing")
+        summary = summarize_batch()
+        print("summarized")
+        return jsonify(summary), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/python/compile-csv', methods=['GET'])
 def compile_csv():
@@ -429,33 +455,35 @@ def compile_csv():
         # SQL query to fetch data from all year levels
         query = """
         SELECT 
-            '1st Year' as "Year_Level", "Major", "Start_Year", "Semester", 
-            "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+            '1st Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester", 
+            "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
         FROM "1st_Year_predictions_result"
         UNION ALL
         SELECT 
-            '2nd Year' as "Year_Level", "Major", "Start_Year", "Semester", 
-            "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+            '2nd Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester", 
+            "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
         FROM "2nd_Year_predictions_result"
         UNION ALL
         SELECT 
-            '3rd Year' as "Year_Level", "Major", "Start_Year", "Semester", 
-            "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+            '3rd Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester", 
+            "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
         FROM "3rd_Year_predictions_result"
         UNION ALL
         SELECT 
-            '4th Year' as "Year_Level", "Major", "Start_Year", "Semester", 
-            "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+            '4th Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester",
+            "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
         FROM "4th_Year_predictions_result"
-        ORDER BY "Major", "Year_Level", "Start_Year", "Semester"
+        ORDER BY  "Department", "Major", "Year_Level", "Start_Year", "Semester"
         """
 
         # Execute the query and load results into a DataFrame
         df = pd.read_sql(text(query), ENGINE)
+        df.to_sql("predictions_result", ENGINE, if_exists='replace', index=False)
         print("compiling csv")
-        print(df.head())
 
         try:
+            print(df.head())
+
             # Create a buffer to store the CSV file
             buffer = io.StringIO()
             df.to_csv(buffer, index=False)
