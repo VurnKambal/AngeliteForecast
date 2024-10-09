@@ -62,15 +62,21 @@ function InternalPage() {
   const [batchSummary, setBatchSummary] = useState([]);
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
+  const [batchInfo, setBatchInfo] = useState({ startYear: null, semester: null });
 
   const onDrop = useCallback((acceptedFiles) => {
-    setFile(acceptedFiles[0]);
+    // Handle the accepted files
+    if (acceptedFiles.length > 0) {
+      setFile(acceptedFiles[0]);
+    }
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
-    accept: '.csv',
-    multiple: false
+    accept: {
+      'text/csv': ['.csv'],
+    },
+    maxFiles: 1,
   });
 
   const uploadCSV = async () => {
@@ -123,6 +129,11 @@ function InternalPage() {
             `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/predict-batch`,
             predictPayload
           );
+          
+          setBatchInfo({
+            startYear: predictionResult.data.start_year,
+            semester: predictionResult.data.semester === 1 || predictionResult.data.semester === 2 ? (predictionResult.data.semester === 1 ? '1st' : '2nd') : 'Invalid Semester'
+          });
           
 
         } catch (error) {
@@ -837,6 +848,11 @@ function InternalPage() {
                   )}
                 </div>
               </div>
+              {fileRejections.length > 0 && (
+                <p className="text-red-500 mt-2">
+                  Please upload a valid CSV file.
+                </p>
+              )}
               {file && (
                 <div className="mt-2">
                   <p>Selected file: {file.name}</p>
@@ -917,7 +933,11 @@ function InternalPage() {
             {/* Display batch results */}
             {showBatchResults && !isBatchProcessing && (
               <div className="mt-6">
-                <h2 className="text-xl font-bold mb-4">Batch Prediction Summary</h2>
+                {batchInfo.startYear && batchInfo.semester && (
+                  <h2 className="text-xl font-bold mb-4">Batch Prediction Summary Batch for School Year:&nbsp;
+                  {batchInfo.startYear}-{parseInt(batchInfo.startYear) + 1}, {batchInfo.semester} Semester</h2>
+                  )
+                }
                 <div className="overflow-x-auto">
                   <table className="table table-compact w-full">
                     <thead>

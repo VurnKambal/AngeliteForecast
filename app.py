@@ -586,9 +586,8 @@ def predict_batch():
         
         # Convert all_predictions to a DataFrame
         final_predictions = pd.DataFrame(all_predictions)
-        
-        # print("Batch predictions:", final_predictions)
-        return jsonify(final_predictions.to_dict(orient='records')), 200
+        return jsonify({'start_year': start_year, 'semester': semester,
+                        'predictions': final_predictions.to_dict(orient='records')}), 200
     except Exception as e:
         print(e, "error")
 
