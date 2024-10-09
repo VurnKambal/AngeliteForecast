@@ -8,7 +8,7 @@ function GettingStarted(){
     const dispatch = useDispatch()
 
     useEffect(() => {
-        dispatch(setPageTitle({ title : "Getting Started"}))
+        dispatch(setPageTitle({ title : "About"}))
     }, [dispatch])
 
     return(

@@ -29,7 +29,7 @@ const routes = [
   {
     path: '/app/getting-started',
     icon: <HomeIcon className={iconClasses} />, // Changed to HomeIcon for "Dashboard"
-    name: 'Dashboard',
+    name: 'About',
   },
   {
     path: '/app/trends',
