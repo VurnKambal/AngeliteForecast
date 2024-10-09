@@ -12,6 +12,8 @@ import joblib
 from dotenv import load_dotenv
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql import text
 
 from model import initialize_models, preprocess_data, preprocess_data_batch
 from model import make_predictions, make_predictions_batch, train_models
@@ -570,6 +572,76 @@ def predict_batch():
     except Exception as e:
         print(e, "error")
 
+
+
+
+@app.route('/python/transactions/update', methods=['POST'])
+def update_transactions():
+    if 'csvFile' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['csvFile']
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+
+    if file:
+        try:
+            # Read CSV file
+            df = pd.read_csv(file, dtype=str)
+            
+            # Trim whitespace from column names and data
+            df.columns = df.columns.str.strip()
+            df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
+            # Ensure critical fields are present
+            critical_fields = ['Major', 'Department', 'Semester', 'Start_Year']
+            if not all(field in df.columns for field in critical_fields):
+                return jsonify({"error": "CSV is missing critical fields"}), 400
+
+            # Filter out rows with empty critical fields
+            df = df.dropna(subset=critical_fields)
+
+            # Convert numeric fields
+            numeric_fields = ['Start_Year', 'Semester', '1st_Year', '2nd_Year', '3rd_Year', '4th_Year', '5th_Year',
+                              'Grade_1', 'Grade_2', 'Grade_3', 'Grade_4', 'Grade_5', 'Grade_6',
+                              'Grade_7', 'Grade_8', 'Grade_9', 'Grade_10', 'Grade_11', 'Grade_12', 'TOTAL']
+            for field in numeric_fields:
+                if field in df.columns:
+                    df[field] = pd.to_numeric(df[field], errors='coerce').fillna(0).astype(int)
+
+            # Prepare data for insertion
+            columns = ['Start_Year', 'Semester', 'Department', 'Major',
+                       '1st_Year', '2nd_Year', '3rd_Year', '4th_Year', '5th_Year',
+                       'Grade_1', 'Grade_2', 'Grade_3', 'Grade_4', 'Grade_5', 'Grade_6',
+                       'Grade_7', 'Grade_8', 'Grade_9', 'Grade_10', 'Grade_11', 'Grade_12', 'TOTAL']
+            
+            data_to_insert = df[columns].to_dict('records')
+
+            # Prepare the SQL query
+            insert_query = text(f"""
+                INSERT INTO enrollment ({', '.join(f'"{col}"' for col in columns)})
+                VALUES ({', '.join(f':{col}' for col in columns)})
+                ON CONFLICT ("Start_Year", "Semester", "Department", "Major")
+                DO UPDATE SET
+                {', '.join(f'"{col}" = EXCLUDED."{col}"' for col in columns[4:])}
+            """)
+            print("inserting", insert_query)
+            # Execute the query
+            with ENGINE.begin() as connection:
+                for row in data_to_insert:
+                    connection.execute(insert_query, row)
+
+            return jsonify({
+                "message": "Data updated successfully",
+                "rowsProcessed": len(data_to_insert)
+            }), 200
+
+        except SQLAlchemyError as e:
+            print(f"Database error: {str(e)}")
+            return jsonify({"error": f"A database error occurred while updating the data: {str(e)}"}), 500
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            return jsonify({"error": f"An error occurred while updating the data: {str(e)}"}), 500
 
 
 if __name__ == '__main__':

@@ -11,6 +11,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 const zxcvbn = require('zxcvbn');
+const { parse } = require('csv-parse');
 
 const app = express();
 app.use(express.json());
@@ -502,60 +503,132 @@ app.get("/api/transactions/processed-data", async (req, res) => {
   }
 });
 
-app.post(
-  "/api/transactions/update",
-  [
-    body("Start_Year").isInt(),
-    body("End_Year").isInt(),
-    body("Semester").isInt(),
-    body("Department").isString().trim().escape(),
-    body("Major").isString().trim().escape(),
-    body("1st_Year").isInt(),
-    body("2nd_Year").isInt(),
-    body("3rd_Year").isInt(),
-    body("4th_Year").isInt(),
-    body("5th_Year").isInt(),
-  ],
-  validate,
-  async (req, res) => {
-    try {
-      const {
-        Start_Year,
-        End_Year,
-        Semester,
-        Department,
-        Major,
-        "1st_Year": firstYear,
-        "2nd_Year": secondYear,
-        "3rd_Year": thirdYear,
-        "4th_Year": fourthYear,
-        "5th_Year": fifthYear,
-      } = req.body;
 
-      const query = {
-        text: `
-          INSERT INTO enrollment ("Start_Year", "End_Year", "Semester", "Department", "Major", "1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year")
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          ON CONFLICT ("Start_Year", "End_Year", "Semester", "Department", "Major")
-          DO UPDATE SET
-            "1st_Year" = EXCLUDED."1st_Year",
-            "2nd_Year" = EXCLUDED."2nd_Year",
-            "3rd_Year" = EXCLUDED."3rd_Year",
-            "4th_Year" = EXCLUDED."4th_Year",
-            "5th_Year" = EXCLUDED."5th_Year"
-        `,
-        values: [Start_Year, End_Year, Semester, Department, Major, firstYear, secondYear, thirdYear, fourthYear, fifthYear],
-      };
 
-      await pool.query(query);
-
-      res.status(200).json({ message: 'Data updated successfully' });
-    } catch (err) {
-      console.error('Error updating data:', err);
-      res.status(500).json({ error: 'An error occurred while updating the data' });
-    }
+// Add this function to create a unique constraint if it doesn't exist
+async function ensureUniqueConstraint() {
+  try {
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint 
+          WHERE conname = 'enrollment_unique_constraint'
+        ) THEN
+          ALTER TABLE enrollment 
+          ADD CONSTRAINT enrollment_unique_constraint 
+          UNIQUE ("Start_Year", "Semester", "Department", "Major");
+        END IF;
+      END $$;
+    `);
+    console.log("Unique constraint checked/created successfully");
+  } catch (err) {
+    console.error("Error ensuring unique constraint:", err);
   }
-);
+}
+
+// Call this function when your server starts
+ensureUniqueConstraint();
+const multer = require('multer');
+const fs = require('fs');
+
+const upload = multer({ dest: 'uploads/' });
+
+app.post("/api/transactions/update", upload.single('csvFile'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const parser = parse({
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+  });
+
+  const results = [];
+  fs.createReadStream(req.file.path)
+    .pipe(parser)
+    .on('data', (data) => {
+      console.log("Raw CSV row:", data);  // Log raw data
+      results.push(data);
+    })
+    .on('end', async () => {
+      try {
+        const validRows = results.filter(row => {
+          console.log("Filtering row:", row);  // Log each row being filtered
+          const criticalFields = ['Major', 'Department', 'Semester', 'Start_Year'];
+          return criticalFields.every(field => {
+            console.log(`Checking ${field}:`, row.Major);
+            if (field === 'Start_Year' || field === 'Semester') {
+              return row[field] && row[field] !== '' && !isNaN(row[field]);
+            } else {
+              return row[field] && row[field] !== '';
+            }
+          });
+        });
+        console.log("Valid rows:", validRows);
+
+        for (const row of validRows) {
+          const columns = [
+            "Start_Year", "Semester", "Department", "Major",
+            "1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year",
+            "Grade_1", "Grade_2", "Grade_3", "Grade_4", "Grade_5", "Grade_6",
+            "Grade_7", "Grade_8", "Grade_9", "Grade_10", "Grade_11", "Grade_12", "TOTAL"
+          ];
+        
+          const values = columns.map(col => {
+            if (col === "Start_Year" || col === "Semester") {
+              return parseInt(row[col]) || 0;
+            } else if (col === "Department" || col === "Major") {
+              return row[col] || '';
+            } else {
+              const value = parseInt(row[col]);
+              return isNaN(value) ? 0 : value;
+            }
+          });
+        
+          const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
+          const updateSet = columns.slice(4).map(col => `"${col}" = EXCLUDED."${col}"`).join(', ');
+        
+          const query = {
+            text: `
+              INSERT INTO enrollment ("${columns.join('", "')}")
+              VALUES (${placeholders})
+              ON CONFLICT ("Start_Year", "Semester", "Department", "Major")
+              DO UPDATE SET
+                ${updateSet}
+            `,
+            values: values,
+          };
+        
+          try {
+            console.log("Executing query:", query);
+            await pool.query(query);
+          } catch (err) {
+            console.error('Error inserting/updating row:', err);
+            console.error('Problematic row:', row);
+            continue;
+          }
+        }
+
+        const droppedRows = results.length - validRows.length;
+        res.status(200).json({ 
+          message: 'Data updated successfully',
+          rowsProcessed: validRows.length,
+          rowsDropped: droppedRows
+        });
+      } catch (err) {
+        console.error('Error updating data:', err);
+        res.status(500).json({ error: 'An error occurred while updating the data' });
+      } finally {
+        fs.unlink(req.file.path, (unlinkErr) => {
+          if (unlinkErr) {
+            console.error('Error deleting temporary file:', unlinkErr);
+          }
+        });
+      }
+    });
+});
 
 
 app.get("/api/departments", async (req, res) => {
@@ -910,6 +983,28 @@ app.get("/api/latest-data-year", async (req, res) => {
   }
 });
 
+// New route to get the latest data year
+app.get("/api/enrollment/latest-data-year", async (req, res) => {
+  try {
+    const latestYearQuery = {
+      text: `
+        SELECT MAX("Start_Year") as latest_year
+        FROM enrollment
+      `,
+    };
+
+    const result = await pool.query(latestYearQuery);
+
+    if (result.rows.length > 0) {
+      res.json({ latestYear: result.rows[0].latest_year });
+    } else {
+      res.status(404).json({ error: "No data found" });
+    }
+  } catch (err) {
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 // Endpoint to fetch external data based on school year and department
 app.get(
   "/api/external-data",

@@ -44,6 +44,11 @@ function Header({ isAdmin }) {
 
   function logoutUser() {
     localStorage.clear();
+      
+    // Clear browser cache
+    if (window.history && window.history.pushState) {
+      window.history.pushState('', document.title, window.location.pathname);
+    }
     window.location.href = "/";
   }
 

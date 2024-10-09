@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Select from "react-select";
-import Slider from "rc-slider";
-import "rc-slider/assets/index.css";
+import { Select as AntSelect, Input, Button, message, Upload } from "antd";
 import TitleCard from "../../components/Cards/TitleCard";
 import FunnelIcon from "@heroicons/react/24/outline/FunnelIcon";
 import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
-import SearchBar from "../../components/Input/SearchBar";
-import { Select as AntSelect } from 'antd';
+import { InboxOutlined } from "@ant-design/icons";
 
 const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
   const [filterParams, setFilterParams] = useState({
@@ -78,7 +76,6 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
 
   return (
     <div className="inline-block float-right">
-      
       {filterParams.department && (
         <button
           onClick={removeAppliedFilter}
@@ -102,7 +99,6 @@ const TopSideButtons = ({ removeFilter, applyFilter, applySearch }) => {
             </li>
           ))}
           <div className="divider mt-0 mb-0"></div>
-          
         </ul>
       </div>
     </div>
@@ -137,6 +133,80 @@ function Transactions() {
   ]);
   const [sliderValue, setSliderValue] = useState(schoolYearRange);
 
+  // New state variables for update form
+  const [updateForm, setUpdateForm] = useState({
+    Start_Year: "",
+    End_Year: "",
+    Semester: "",
+    Department: "",
+    Major: "",
+    "1st_Year": "",
+    "2nd_Year": "",
+    "3rd_Year": "",
+    "4th_Year": "",
+    "5th_Year": "",
+  });
+
+  const [batchId, setBatchId] = useState("");
+
+  // Add a new state variable for update form majors
+  const [updateFormMajors, setUpdateFormMajors] = useState([]);
+
+  // Handle update form input changes
+  const handleUpdateFormChange = async (name, value) => {
+    setUpdateForm((prevForm) => ({
+      ...prevForm,
+      [name]: value,
+    }));
+
+    if (name === "Department") {
+      // Fetch majors for the selected department in the update form
+      await fetchMajors([value], "update");
+      // Reset the Major field when Department changes
+      setUpdateForm((prevForm) => ({
+        ...prevForm,
+        Major: "",
+      }));
+    }
+  };
+
+  // Handle update form submission
+  const handleUpdateSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/transactions/update`,
+        updateForm
+      );
+      message.success("Data updated successfully");
+      setBatchId(response.data.batchId);
+      fetchData(); // Refresh the data
+    } catch (error) {
+      console.error("Error updating data:", error);
+      message.error("Failed to update data");
+    }
+  };
+
+  // Handle revert changes
+  const handleRevert = async () => {
+    if (!batchId) {
+      message.error("No batch ID available to revert");
+      return;
+    }
+    try {
+      await axios.post(
+        `${process.env.REACT_APP_API_BASE_URL}/api/transactions/revert`,
+        { batchId }
+      );
+      message.success("Changes reverted successfully");
+      setBatchId("");
+      fetchData(); // Refresh the data
+    } catch (error) {
+      console.error("Error reverting changes:", error);
+      message.error("Failed to revert changes");
+    }
+  };
+
   // Fetch the lowest year and latest year
   const fetchYearRange = async () => {
     try {
@@ -144,21 +214,21 @@ function Transactions() {
         axios.get(
           `${process.env.REACT_APP_API_BASE_URL}/api/transactions/lowest-enrollment-year`
         ),
-        axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/latest-data-year`),
+        axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/enrollment/latest-data-year`),
       ]);
 
       const lowestYear = lowestYearResponse.data.lowestYear;
       const latestYear = latestYearResponse.data.latestYear;
 
       setSchoolYearRange([parseInt(lowestYear, 10), parseInt(latestYear, 10)]);
-      
+
       // Set default values for filterParams
-      setFilterParams(prevParams => ({
+      setFilterParams((prevParams) => ({
         ...prevParams,
         startYear: parseInt(lowestYear, 10),
         endYear: parseInt(lowestYear, 10) + 1,
         startYear_1: parseInt(latestYear, 10),
-        endYear_1: parseInt(latestYear, 10) + 1
+        endYear_1: parseInt(latestYear, 10) + 1,
       }));
     } catch (error) {
       console.error("Error fetching year range:", error);
@@ -182,14 +252,12 @@ function Transactions() {
         }
       });
 
-
       if (params.length > 0) {
         url += `?${params.join("&")}`;
       }
 
-
       const response = await axios.get(url);
-      console.log(response.data)
+      console.log(response.data);
       setTrans(response.data);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -222,7 +290,7 @@ function Transactions() {
   }, []);
 
   // Fetch majors based on department
-  const fetchMajors = async (departments) => {
+  const fetchMajors = async (departments, formType = "filter") => {
     try {
       const response = await axios.get(
         `${process.env.REACT_APP_API_BASE_URL}/api/transactions/majors`,
@@ -232,16 +300,19 @@ function Transactions() {
       );
 
       if (response.data && Array.isArray(response.data)) {
-        // Remove duplicates while preserving order
         const uniqueMajors = response.data.reduce((acc, major) => {
-          if (!acc.some(m => m.Major === major.Major)) {
+          if (!acc.some((m) => m.Major === major.Major)) {
             acc.push(major);
           }
           return acc;
         }, []);
 
-        setMajors(uniqueMajors);
-        console.log("Unique majors:", uniqueMajors);
+        if (formType === "filter") {
+          setMajors(uniqueMajors);
+        } else {
+          setUpdateFormMajors(uniqueMajors);
+        }
+        console.log(`Unique majors for ${formType}:`, uniqueMajors);
         return uniqueMajors;
       } else {
         console.error("Unexpected majors data structure:", response.data);
@@ -305,14 +376,14 @@ function Transactions() {
     console.log("majors:", currentMajors);
 
     // Filter the current majors to keep only those belonging to the selected departments
-    const updatedMajors = currentMajors.filter(majorName => {
-      console.log(majors[0].Major, "name", majorName)
-      const majorObj = majors.find(m => m.Major === majorName);
-      console.log(majorObj)
+    const updatedMajors = currentMajors.filter((majorName) => {
+      console.log(majors[0].Major, "name", majorName);
+      const majorObj = majors.find((m) => m.Major === majorName);
+      console.log(majorObj);
       return majorObj && selectedDepartments.includes(majorObj.Department);
     });
-    console.log(updatedMajors)
-    setFilterParams(prevData => ({
+    console.log(updatedMajors);
+    setFilterParams((prevData) => ({
       ...prevData,
       department: selectedDepartments,
       major: updatedMajors,
@@ -334,29 +405,66 @@ function Transactions() {
   ];
 
   const handleStartYearChange = (value) => {
-    setFilterParams(prevParams => ({
+    setFilterParams((prevParams) => ({
       ...prevParams,
       startYear: value,
       endYear: value + 1,
       startYear_1: Math.max(value, prevParams.startYear_1),
-      endYear_1: Math.max(value + 1, prevParams.endYear_1)
+      endYear_1: Math.max(value + 1, prevParams.endYear_1),
     }));
   };
 
   const handleEndYearChange = (value) => {
-    setFilterParams(prevParams => ({
+    setFilterParams((prevParams) => ({
       ...prevParams,
       startYear_1: value,
       endYear_1: value + 1,
       startYear: Math.min(value, prevParams.startYear),
-      endYear: Math.min(value + 1, prevParams.endYear)
+      endYear: Math.min(value + 1, prevParams.endYear),
     }));
+  };
+
+  // New function to handle CSV file upload
+  const handleCsvUpload = async (info) => {
+    const { status, name, originFileObj } = info.file;
+    if (status !== "uploading") {
+      console.log(info.file, info.fileList);
+    }
+    if (status === "done") {
+      try {
+        const formData = new FormData();
+        formData.append("csvFile", originFileObj);
+
+        const response = await axios.post(
+          `${process.env.REACT_APP_PYTHON_API_BASE_URL}/python/transactions/update`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        message.success(`${name} file uploaded and data updated successfully.`);
+        setBatchId(response.data.batchId);
+        fetchYearRange();
+        fetchData(); // Refresh the data
+      } catch (error) {
+        console.error("Error updating data:", error);
+        message.error(
+          `Failed to update data: ${
+            error.response?.data?.error || error.message
+          }`
+        );
+      }
+    }
   };
 
   return (
     <>
       <TitleCard
-        title={`Past Enrollments [${schoolYearRange[0]}-${schoolYearRange[0]+1} | ${schoolYearRange[1]}-${schoolYearRange[1]+1}]`}
+        title={`Past Enrollments [${schoolYearRange[0]}-${
+          schoolYearRange[0] + 1
+        } | ${schoolYearRange[1]}-${schoolYearRange[1] + 1}]`}
         topMargin="mt-2"
       >
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 mb-4">
@@ -394,7 +502,7 @@ function Transactions() {
                   label: dept.Department,
                 }))}
                 isMulti
-                className="basic-multi-select absolute inset-0 z-60"  // Add these classes
+                className="basic-multi-select absolute inset-0 z-60" // Add these classes
                 classNamePrefix="select"
                 required
               />
@@ -447,7 +555,7 @@ function Transactions() {
                 <button
                   type="button"
                   onClick={() => {
-                    setFilterParams(prevParams => ({
+                    setFilterParams((prevParams) => ({
                       ...prevParams,
                       startYear: schoolYearRange[0],
                       endYear: schoolYearRange[0] + 1,
@@ -467,8 +575,13 @@ function Transactions() {
                     onChange={handleStartYearChange}
                     className="flex-1"
                   >
-                    {Array.from({ length: schoolYearRange[1] - schoolYearRange[0] + 1 }, (_, i) => schoolYearRange[0] + i).map(year => (
-                      <AntSelect.Option key={year} value={year}>{`${year}-${year+1}`}</AntSelect.Option>
+                    {Array.from(
+                      { length: schoolYearRange[1] - schoolYearRange[0] + 1 },
+                      (_, i) => schoolYearRange[0] + i
+                    ).map((year) => (
+                      <AntSelect.Option key={year} value={year}>{`${year}-${
+                        year + 1
+                      }`}</AntSelect.Option>
                     ))}
                   </AntSelect>
                   <span>-</span>
@@ -477,8 +590,15 @@ function Transactions() {
                     onChange={handleEndYearChange}
                     className="flex-1"
                   >
-                    {Array.from({ length: schoolYearRange[1] - filterParams.startYear + 1 }, (_, i) => filterParams.startYear + i).map(year => (
-                      <AntSelect.Option key={year} value={year}>{`${year}-${year+1}`}</AntSelect.Option>
+                    {Array.from(
+                      {
+                        length: schoolYearRange[1] - filterParams.startYear + 1,
+                      },
+                      (_, i) => filterParams.startYear + i
+                    ).map((year) => (
+                      <AntSelect.Option key={year} value={year}>{`${year}-${
+                        year + 1
+                      }`}</AntSelect.Option>
                     ))}
                   </AntSelect>
                 </div>
@@ -518,6 +638,47 @@ function Transactions() {
             </div>
           </div>
         </form>
+        <div className="divider pt-8 pb-6">Update Enrollment Data</div>
+
+        <Upload.Dragger
+          name="file"
+          multiple={false}
+          accept=".csv"
+          beforeUpload={(file) => {
+            const isCsv = file.type === "text/csv" || file.name.endsWith(".csv");
+            if (!isCsv) {
+              message.error(`${file.name} is not a csv file`);
+            }
+            return isCsv || Upload.LIST_IGNORE;
+          }}
+          customRequest={({ file, onSuccess, onError }) => {
+            // Simulate a successful upload to trigger the "done" status
+            setTimeout(() => {
+              onSuccess("ok");
+            }, 0);
+          }}
+          onChange={handleCsvUpload}
+        >
+          <p className="ant-upload-drag-icon">
+            <InboxOutlined />
+          </p>
+          <p className="ant-upload-text">
+            Click or drag file to this area to upload
+          </p>
+          <p className="ant-upload-hint">
+            Support for a single CSV file upload. Strictly prohibit from
+            uploading company data or other sensitive files.
+          </p>
+        </Upload.Dragger>
+
+        {batchId && (
+          <div className="mt-4">
+            <Button onClick={handleRevert} danger>
+              Revert Changes
+            </Button>
+          </div>
+        )}
+
         <div className="divider pt-8 pb-6"></div>
         <div className="overflow-x-auto w-full">
           <table className="table w-full">
@@ -544,14 +705,14 @@ function Transactions() {
                   (l["2nd_Year"] || 0) +
                   (l["3rd_Year"] || 0) +
                   (l["4th_Year"] || 0) +
-                  (l["5th_Year"] || 0) + 
+                  (l["5th_Year"] || 0) +
                   (l["Grade_11"] || 0) +
                   (l["Grade_12"] || 0);
 
                 return (
                   <tr key={k}>
                     <td>
-                      {l.Start_Year}-{l.End_Year}
+                      {parseInt(l.Start_Year)}-{parseInt(l.Start_Year) + 1}
                     </td>
                     <td>{l.Semester}</td>
                     <td>{l.Department}</td>
