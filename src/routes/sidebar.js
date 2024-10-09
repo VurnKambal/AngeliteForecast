@@ -41,11 +41,7 @@ const routes = [
     icon: <TableCellsIcon className={submenuIconClasses} />,
     name: 'Enrollments',
   },
-  {
-    path: '/app/dashboard',
-    icon: <ChartPieIcon className={iconClasses} />, // Changed to ChartPieIcon for "Metrics"
-    name: 'Metrics',
-  },
+  
   {
     path: '/app/forecast',
     icon: <BoltIcon className={iconClasses} />,

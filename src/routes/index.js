@@ -21,10 +21,7 @@ const Register = lazy(() => import('../pages/Register'))
 const ChangePassword = lazy(() => import('../pages/ChangePassword'))
 
 const routes = [
-  {
-    path: '/dashboard', // the url
-    component: Dashboard, // view rendered
-  },
+
   {
     path: '/welcome', // the url
     component: Welcome, // view rendered
