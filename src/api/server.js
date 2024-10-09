@@ -293,7 +293,7 @@ app.get("/api/dashboard-selected-stats", async (req, res) => {
 
     
 
-
+    console.log(inflationResult.rows[0])
     // Construct the response
     const dashboardStats = {
       admission: {
@@ -1147,10 +1147,16 @@ app.post(
 app.get("/api/latest-school-year-semester", async (req, res) => {
   try {
     const query = `
-      SELECT "Start_Year", "Semester"
-      FROM enrollment
-      ORDER BY "Start_Year" DESC, "Semester" DESC
-      LIMIT 1
+      WITH latest_year AS (
+                SELECT MAX("Start_Year") AS max_year
+                FROM processed_factors
+            )
+            SELECT ly.max_year AS "Start_Year", 
+                   COALESCE(MAX(e."Semester"), 1) AS "Semester"
+            FROM latest_year ly
+            LEFT JOIN enrollment e ON e."Start_Year" = ly.max_year
+            GROUP BY ly.max_year
+            LIMIT 1
     `;
 
     const result = await pool.query(query);

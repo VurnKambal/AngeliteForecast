@@ -1499,14 +1499,14 @@ def make_predictions_batch(engine, models, year_level, weight_ses=0.2, weight_rf
             # Filter data for the specific major
             majorData = X_major[X_major['Major'] == major]
             y_major_train = actual_enrollment[
-                (actual_enrollment['Start_Year'].astype(int) < start_year) | 
-                ((actual_enrollment['Start_Year'].astype(int) == start_year) & (actual_enrollment['Semester'].astype(int) < semester)) &
+                ((actual_enrollment['Start_Year'].astype(int) < start_year) | 
+                ((actual_enrollment['Start_Year'].astype(int) == start_year) & (actual_enrollment['Semester'].astype(int) < semester))) &
                 (actual_enrollment['Major'] == major)
             ][year_level].values
 
             y_major_pred = actual_enrollment[
-                (actual_enrollment['Start_Year'] == start_year) & 
-                (actual_enrollment['Semester'] == semester) &
+                ((actual_enrollment['Start_Year'] == start_year) & 
+                (actual_enrollment['Semester'] == semester)) &
                 (actual_enrollment['Major'] == major)
             ][year_level].values
             print("yyyyyyyyy")
@@ -1536,7 +1536,12 @@ def make_predictions_batch(engine, models, year_level, weight_ses=0.2, weight_rf
             print(steps, "steps")
             # Ensure SES model forecasts the correct number of steps
             y_major_pred_ses = ses_model.forecast(steps=steps)
-            print(len(y_major_pred_ses))
+            print(actual_enrollment[
+                (actual_enrollment['Start_Year'].astype(int) < start_year) | 
+                ((actual_enrollment['Start_Year'].astype(int) == start_year) & (actual_enrollment['Semester'].astype(int) < semester)) &
+                (actual_enrollment['Major'] == major)
+            ][year_level])
+            print(y_major_pred_ses)
             y_major_pred_rf = rf_model.predict(X_major_pred_filtered_non_xgb)
             print(len(y_major_pred_rf))
 
@@ -1572,7 +1577,7 @@ def make_predictions_batch(engine, models, year_level, weight_ses=0.2, weight_rf
                 'Attrition_Rate_MA': (X_major_pred_filtered['Previous_Semester'].values - y_major_pred_ma) / X_major_pred_filtered['Previous_Semester'].values * 100
             })
             
-            print(major_predictions)
+            print(major_predictions[["Prediction_SES", "Prediction_MA"]])
             all_predictions.append(major_predictions)
     except Exception as e:
         print(e)

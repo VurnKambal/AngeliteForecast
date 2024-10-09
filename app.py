@@ -433,12 +433,32 @@ def summarize_batch():
         SUM("Prediction_Ensemble") AS "Total_Prediction_Ensemble",
         SUM("Prediction_SES") AS "Total_Prediction_SES",
         SUM("Prediction_MA") AS "Total_Prediction_MA"
-    FROM predictions_result
+    FROM (SELECT 
+            '1st Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester", 
+            "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+        FROM "1st_Year_predictions_result"
+        UNION ALL
+        SELECT 
+            '2nd Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester", 
+            "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+        FROM "2nd_Year_predictions_result"
+        UNION ALL
+        SELECT 
+            '3rd Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester", 
+            "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+        FROM "3rd_Year_predictions_result"
+        UNION ALL
+        SELECT 
+            '4th Year' as "Year_Level", "Major", "Department", "Start_Year", "Semester",
+            "Previous_Semester", "Prediction_Ensemble", "Prediction_SES", "Prediction_MA"
+        FROM "4th_Year_predictions_result"
+        ORDER BY  "Department", "Major", "Year_Level", "Start_Year", "Semester")
     GROUP BY "Department", "Year_Level"
     ORDER BY "Department", "Year_Level" 
     """
     
     result = pd.read_sql(text(query), ENGINE)
+    
     return result.to_dict(orient='records')
 
 @app.route('/python/summarize-batch', methods=['GET'])
