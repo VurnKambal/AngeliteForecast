@@ -1,7 +1,7 @@
 const express = require("express");
-const passport = require('passport');
-const JwtStrategy = require('passport-jwt').Strategy;
-const ExtractJwt = require('passport-jwt').ExtractJwt;
+const passport = require("passport");
+const JwtStrategy = require("passport-jwt").Strategy;
+const ExtractJwt = require("passport-jwt").ExtractJwt;
 const { Pool } = require("pg");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
@@ -10,8 +10,9 @@ const { body, query, validationResult } = require("express-validator");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
-const zxcvbn = require('zxcvbn');
-const { parse } = require('csv-parse');
+const zxcvbn = require("zxcvbn");
+const { parse } = require("csv-parse");
+const nodemailer = require("nodemailer");
 
 const app = express();
 app.use(express.json());
@@ -37,25 +38,27 @@ const SECRET_KEY = process.env.JWT_SECRET;
 // JWT strategy
 const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-  secretOrKey: SECRET_KEY
+  secretOrKey: SECRET_KEY,
 };
 
-passport.use(new JwtStrategy(jwtOptions, async (jwt_payload, done) => {
-  try {
-    const userQuery = {
-      text: "SELECT * FROM users WHERE id = $1",
-      values: [jwt_payload.id],
-    };
-    const result = await pool.query(userQuery);
-    if (result.rows.length > 0) {
-      return done(null, result.rows[0]);
-    } else {
-      return done(null, false);
+passport.use(
+  new JwtStrategy(jwtOptions, async (jwt_payload, done) => {
+    try {
+      const userQuery = {
+        text: "SELECT * FROM users WHERE id = $1",
+        values: [jwt_payload.id],
+      };
+      const result = await pool.query(userQuery);
+      if (result.rows.length > 0) {
+        return done(null, result.rows[0]);
+      } else {
+        return done(null, false);
+      }
+    } catch (error) {
+      return done(error, false);
     }
-  } catch (error) {
-    return done(error, false);
-  }
-}));
+  })
+);
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -69,11 +72,9 @@ const validate = (req, res, next) => {
   next();
 };
 
-
 // Endpoint for dashboard stats
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
-
     // Query for enrollment data
     const enrollmentQuery = `
       SELECT "Start_Year", "Semester", SUM("1st_Year" + "2nd_Year" + "3rd_Year" + "4th_Year" + "5th_Year") as total
@@ -141,11 +142,21 @@ app.get("/api/dashboard-stats", async (req, res) => {
     `;
     const cpiResult = await pool.query(cpiQuery);
     const monthMap = {
-      'Jan': 'January', 'Feb': 'February', 'Mar': 'March', 'Apr': 'April',
-      'May': 'May', 'Jun': 'June', 'Jul': 'July', 'Aug': 'August',
-      'Sep': 'September', 'Oct': 'October', 'Nov': 'November', 'Dec': 'December'
+      Jan: "January",
+      Feb: "February",
+      Mar: "March",
+      Apr: "April",
+      May: "May",
+      Jun: "June",
+      Jul: "July",
+      Aug: "August",
+      Sep: "September",
+      Oct: "October",
+      Nov: "November",
+      Dec: "December",
     };
-    cpiResult.rows[0].Month = monthMap[cpiResult.rows[0].Month] || cpiResult.rows[0].Month;
+    cpiResult.rows[0].Month =
+      monthMap[cpiResult.rows[0].Month] || cpiResult.rows[0].Month;
 
     // Construct the response
     const dashboardStats = {
@@ -161,7 +172,9 @@ app.get("/api/dashboard-stats", async (req, res) => {
       hfce: {
         year: hfceResult.rows[0].Start_Year,
         value: parseInt(hfceResult.rows[0].HFCE),
-        quarter: ['1st', '2nd', '3rd', '4th'][hfceResult.rows[0].Quarter - 1] + ' Quarter',
+        quarter:
+          ["1st", "2nd", "3rd", "4th"][hfceResult.rows[0].Quarter - 1] +
+          " Quarter",
       },
 
       cpi: {
@@ -179,39 +192,33 @@ app.get("/api/dashboard-stats", async (req, res) => {
   }
 });
 
-
-
 app.get("/api/dashboard-selected-stats", async (req, res) => {
   try {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth(); // + 1 JavaScript months are 0-indexed
 
-
     var { selectedYear, selectedSemester, selectedDepartment } = req.query;
-    
+
     if (!selectedYear || !selectedSemester) {
       return res.status(400).json({ error: "Year and semester are required" });
     }
 
-    
     selectedYear = parseInt(selectedYear);
     selectedSemester = parseInt(selectedSemester);
 
     if (selectedSemester === 2) {
-      enrollmentYear = selectedYear
+      enrollmentYear = selectedYear;
       enrollmentSemester = 1;
     } else if (selectedSemester === 1) {
-      enrollmentYear = selectedYear - 1
+      enrollmentYear = selectedYear - 1;
       enrollmentSemester = 2;
     }
-
 
     // Query for applicants
     let applicantsQuery;
     let applicantsQueryParams;
-    
-    
+
     if (selectedDepartment) {
       applicantsQuery = `
         SELECT SUM("Number_of_Applicants") as total_applicants
@@ -232,16 +239,18 @@ app.get("/api/dashboard-selected-stats", async (req, res) => {
         SELECT SUM("Number_of_Applicants") as total_applicants
           FROM admission
           WHERE "Start_Year" = $1
-            AND "Department" IN (${departments.rows.map(dept => `'${dept.Department}'`).join(', ')});
+            AND "Department" IN (${departments.rows
+              .map((dept) => `'${dept.Department}'`)
+              .join(", ")});
       `;
       applicantsQueryParams = [selectedYear];
     }
 
+    const admissionResult = await pool.query(
+      applicantsQuery,
+      applicantsQueryParams
+    );
 
-    const admissionResult = await pool.query(applicantsQuery, applicantsQueryParams);
-
-
-    
     // Query for enrollment data based on year and semester
     const enrollmentQuery = `
       SELECT "Start_Year", "Semester", SUM("1st_Year" + "2nd_Year" + "3rd_Year" + "4th_Year" + "5th_Year") as total
@@ -250,10 +259,11 @@ app.get("/api/dashboard-selected-stats", async (req, res) => {
       GROUP BY "Start_Year", "Semester";
     `;
 
-    const enrollmentResult = await pool.query(enrollmentQuery, [enrollmentYear, enrollmentSemester]);
+    const enrollmentResult = await pool.query(enrollmentQuery, [
+      enrollmentYear,
+      enrollmentSemester,
+    ]);
 
-
-    
     // Query for inflation rate from the past year based on the given year
     const inflationQuery = `
       SELECT "Start_Year", "Inflation_Rate"
@@ -273,7 +283,6 @@ app.get("/api/dashboard-selected-stats", async (req, res) => {
       GROUP BY "Start_Year"
     `;
     const hfceResult = await pool.query(hfceQuery, [selectedYear]);
-    
 
     // Modify your CPI query to use cpiEndMonth
     const cpiQuery = `
@@ -291,15 +300,15 @@ app.get("/api/dashboard-selected-stats", async (req, res) => {
 
     const cpiResult = await pool.query(cpiQuery, [selectedYear]);
 
-    
-
-    console.log(inflationResult.rows[0])
+    console.log(inflationResult.rows[0]);
     // Construct the response
     const dashboardStats = {
       admission: {
         year: selectedYear,
-        department: selectedDepartment || 'HAU',
-        number_of_applicants: parseInt(admissionResult.rows[0].total_applicants),
+        department: selectedDepartment || "HAU",
+        number_of_applicants: parseInt(
+          admissionResult.rows[0].total_applicants
+        ),
       },
       enrollment: {
         year: parseInt(enrollmentResult.rows[0].Start_Year),
@@ -313,7 +322,9 @@ app.get("/api/dashboard-selected-stats", async (req, res) => {
       hfce: {
         year: hfceResult.rows[0].Start_Year,
         value: parseInt(hfceResult.rows[0].HFCE),
-        quarter: `1st-${['1st', '2nd', '3rd', '4th'][hfceResult.rows[0].max_quarter - 1]} Quarter Average`,
+        quarter: `1st-${
+          ["1st", "2nd", "3rd", "4th"][hfceResult.rows[0].max_quarter - 1]
+        } Quarter Average`,
       },
 
       cpi: {
@@ -324,14 +335,11 @@ app.get("/api/dashboard-selected-stats", async (req, res) => {
     };
 
     res.json(dashboardStats);
-    } catch (error) {
+  } catch (error) {
     console.error("Error fetching dashboard stats:", error);
     res.status(500).json({ error: "Internal server error" });
-    }
   }
-);
-
-
+});
 
 app.get(
   "/api/transactions",
@@ -346,14 +354,8 @@ app.get(
   async (req, res) => {
     try {
       // Extract query parameters
-      const {
-        search,
-        department,
-        startYear,
-        startYear_1,
-        semester,
-        major,
-      } = req.query;
+      const { search, department, startYear, startYear_1, semester, major } =
+        req.query;
 
       // Start with the base query
       let query = `
@@ -366,11 +368,12 @@ app.get(
       // // Check if department parameter is present
       if (department) {
         const departments = department.split(",");
-        const departmentConditions = departments.map((_, index) => `"Department" = $${values.length + index + 1}`);
+        const departmentConditions = departments.map(
+          (_, index) => `"Department" = $${values.length + index + 1}`
+        );
         conditions.push(`(${departmentConditions.join(" OR ")})`);
         values.push(...departments);
       }
-
 
       // Check if startYear parameter is present
       if (startYear) {
@@ -386,8 +389,10 @@ app.get(
 
       // Check if semester parameter is present and is an array
       if (semester) {
-        const semesters = semester.split(',').map(s => s.trim());
-        const placeholders = semesters.map((_, index) => `$${values.length + index + 1}`).join(', ');
+        const semesters = semester.split(",").map((s) => s.trim());
+        const placeholders = semesters
+          .map((_, index) => `$${values.length + index + 1}`)
+          .join(", ");
         conditions.push(`"Semester" IN (${placeholders})`);
         values.push(...semesters);
       }
@@ -395,7 +400,9 @@ app.get(
       // Check if major parameter is present
       if (major) {
         const majors = major.split(",");
-        const majorConditions = majors.map((_, index) => `"Major" = $${values.length + index + 1}`);
+        const majorConditions = majors.map(
+          (_, index) => `"Major" = $${values.length + index + 1}`
+        );
         conditions.push(`(${majorConditions.join(" OR ")})`);
         values.push(...majors);
       }
@@ -466,10 +473,14 @@ app.get("/api/transactions/majors", async (req, res) => {
     }
 
     const departments = department.split(",");
-    const departmentConditions = departments.map((_, index) => `"Department" = $${index + 1}`);
+    const departmentConditions = departments.map(
+      (_, index) => `"Department" = $${index + 1}`
+    );
     const query = {
       text: `
-        SELECT DISTINCT "Major", "Department" FROM enrollment WHERE ${departmentConditions.join(" OR ")} ORDER BY "Major" ASC
+        SELECT DISTINCT "Major", "Department" FROM enrollment WHERE ${departmentConditions.join(
+          " OR "
+        )} ORDER BY "Major" ASC
       `,
       values: departments,
     };
@@ -489,9 +500,9 @@ app.get("/api/transactions/processed-data", async (req, res) => {
       FROM processed_data
       ORDER BY "Start_Year" DESC, "Department" ASC
     `;
-    
+
     const result = await pool.query(query);
-    
+
     if (result.rows.length > 0) {
       res.json(result.rows);
     } else {
@@ -502,8 +513,6 @@ app.get("/api/transactions/processed-data", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-
 
 // Add this function to create a unique constraint if it doesn't exist
 async function ensureUniqueConstraint() {
@@ -529,107 +538,140 @@ async function ensureUniqueConstraint() {
 
 // Call this function when your server starts
 ensureUniqueConstraint();
-const multer = require('multer');
-const fs = require('fs');
+const multer = require("multer");
+const fs = require("fs");
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: "uploads/" });
 
-app.post("/api/transactions/update", upload.single('csvFile'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
+app.post(
+  "/api/transactions/update",
+  upload.single("csvFile"),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
-  const parser = parse({
-    columns: true,
-    skip_empty_lines: true,
-    trim: true,
-  });
+    const parser = parse({
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    });
 
-  const results = [];
-  fs.createReadStream(req.file.path)
-    .pipe(parser)
-    .on('data', (data) => {
-      console.log("Raw CSV row:", data);  // Log raw data
-      results.push(data);
-    })
-    .on('end', async () => {
-      try {
-        const validRows = results.filter(row => {
-          console.log("Filtering row:", row);  // Log each row being filtered
-          const criticalFields = ['Major', 'Department', 'Semester', 'Start_Year'];
-          return criticalFields.every(field => {
-            console.log(`Checking ${field}:`, row.Major);
-            if (field === 'Start_Year' || field === 'Semester') {
-              return row[field] && row[field] !== '' && !isNaN(row[field]);
-            } else {
-              return row[field] && row[field] !== '';
-            }
+    const results = [];
+    fs.createReadStream(req.file.path)
+      .pipe(parser)
+      .on("data", (data) => {
+        console.log("Raw CSV row:", data); // Log raw data
+        results.push(data);
+      })
+      .on("end", async () => {
+        try {
+          const validRows = results.filter((row) => {
+            console.log("Filtering row:", row); // Log each row being filtered
+            const criticalFields = [
+              "Major",
+              "Department",
+              "Semester",
+              "Start_Year",
+            ];
+            return criticalFields.every((field) => {
+              console.log(`Checking ${field}:`, row.Major);
+              if (field === "Start_Year" || field === "Semester") {
+                return row[field] && row[field] !== "" && !isNaN(row[field]);
+              } else {
+                return row[field] && row[field] !== "";
+              }
+            });
           });
-        });
-        console.log("Valid rows:", validRows);
+          console.log("Valid rows:", validRows);
 
-        for (const row of validRows) {
-          const columns = [
-            "Start_Year", "Semester", "Department", "Major",
-            "1st_Year", "2nd_Year", "3rd_Year", "4th_Year", "5th_Year",
-            "Grade_1", "Grade_2", "Grade_3", "Grade_4", "Grade_5", "Grade_6",
-            "Grade_7", "Grade_8", "Grade_9", "Grade_10", "Grade_11", "Grade_12", "TOTAL"
-          ];
-        
-          const values = columns.map(col => {
-            if (col === "Start_Year" || col === "Semester") {
-              return parseInt(row[col]) || 0;
-            } else if (col === "Department" || col === "Major") {
-              return row[col] || '';
-            } else {
-              const value = parseInt(row[col]);
-              return isNaN(value) ? 0 : value;
-            }
-          });
-        
-          const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
-          const updateSet = columns.slice(4).map(col => `"${col}" = EXCLUDED."${col}"`).join(', ');
-        
-          const query = {
-            text: `
+          for (const row of validRows) {
+            const columns = [
+              "Start_Year",
+              "Semester",
+              "Department",
+              "Major",
+              "1st_Year",
+              "2nd_Year",
+              "3rd_Year",
+              "4th_Year",
+              "5th_Year",
+              "Grade_1",
+              "Grade_2",
+              "Grade_3",
+              "Grade_4",
+              "Grade_5",
+              "Grade_6",
+              "Grade_7",
+              "Grade_8",
+              "Grade_9",
+              "Grade_10",
+              "Grade_11",
+              "Grade_12",
+              "TOTAL",
+            ];
+
+            const values = columns.map((col) => {
+              if (col === "Start_Year" || col === "Semester") {
+                return parseInt(row[col]) || 0;
+              } else if (col === "Department" || col === "Major") {
+                return row[col] || "";
+              } else {
+                const value = parseInt(row[col]);
+                return isNaN(value) ? 0 : value;
+              }
+            });
+
+            const placeholders = values
+              .map((_, index) => `$${index + 1}`)
+              .join(", ");
+            const updateSet = columns
+              .slice(4)
+              .map((col) => `"${col}" = EXCLUDED."${col}"`)
+              .join(", ");
+
+            const query = {
+              text: `
               INSERT INTO enrollment ("${columns.join('", "')}")
               VALUES (${placeholders})
               ON CONFLICT ("Start_Year", "Semester", "Department", "Major")
               DO UPDATE SET
                 ${updateSet}
             `,
-            values: values,
-          };
-        
-          try {
-            console.log("Executing query:", query);
-            await pool.query(query);
-          } catch (err) {
-            console.error('Error inserting/updating row:', err);
-            console.error('Problematic row:', row);
-            continue;
+              values: values,
+            };
+
+            try {
+              console.log("Executing query:", query);
+              await pool.query(query);
+            } catch (err) {
+              console.error("Error inserting/updating row:", err);
+              console.error("Problematic row:", row);
+              continue;
+            }
           }
+
+          const droppedRows = results.length - validRows.length;
+          res.status(200).json({
+            message: "Data updated successfully",
+            rowsProcessed: validRows.length,
+            rowsDropped: droppedRows,
+          });
+        } catch (err) {
+          console.error("Error updating data:", err);
+          res
+            .status(500)
+            .json({ error: "An error occurred while updating the data" });
+        } finally {
+          fs.unlink(req.file.path, (unlinkErr) => {
+            if (unlinkErr) {
+              console.error("Error deleting temporary file:", unlinkErr);
+            }
+          });
         }
-
-        const droppedRows = results.length - validRows.length;
-        res.status(200).json({ 
-          message: 'Data updated successfully',
-          rowsProcessed: validRows.length,
-          rowsDropped: droppedRows
-        });
-      } catch (err) {
-        console.error('Error updating data:', err);
-        res.status(500).json({ error: 'An error occurred while updating the data' });
-      } finally {
-        fs.unlink(req.file.path, (unlinkErr) => {
-          if (unlinkErr) {
-            console.error('Error deleting temporary file:', unlinkErr);
-          }
-        });
-      }
-    });
-});
-
+      });
+  }
+);
 
 app.get("/api/departments", async (req, res) => {
   try {
@@ -703,16 +745,25 @@ app.post(
   "/api/register",
   [
     body("name").isString().trim().escape(),
-    body("email").isEmail().normalizeEmail().custom(value => {
-      if (!value.endsWith('hau.edu.ph')) {
-        throw new Error('Email must be a valid HAU email address');
-      }
-      return true;
-    }),
+    body("email")
+      .isEmail()
+      .normalizeEmail()
+      .custom((value) => {
+        if (!value.endsWith("hau.edu.ph")) {
+          throw new Error("Email must be a valid HAU email address");
+        }
+        return true;
+      }),
     body("password").custom((value, { req }) => {
+      // Skip password strength check if it's a generated password
+      if (req.body.generatedPassword) {
+        return true;
+      }
       const result = zxcvbn(value);
       if (result.score < 3) {
-        throw new Error('Password is too weak. Please choose a stronger password.');
+        throw new Error(
+          "Password is too weak. Please choose a stronger password."
+        );
       }
       return true;
     }),
@@ -724,60 +775,94 @@ app.post(
     }
 
     const { name, email, password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        errors: [{ msg: "Password is required" }],
+      });
+    }
+
     try {
-      // Start a transaction
-      await pool.query('BEGIN');
-
-      // Check if username already exists
-      const usernameQuery = {
-        text: "SELECT * FROM users WHERE username = $1",
-        values: [name],
-      };
-      const usernameCheck = await pool.query(usernameQuery);
+      console.log("zzz");
+      await pool.query("BEGIN");
+      console.log("user");
+      const usernameCheck = await pool.query(
+        "SELECT * FROM users WHERE username = $1",
+        [name]
+      );
       if (usernameCheck.rows.length > 0) {
-        await pool.query('ROLLBACK');
-        return res.status(400).json({ error: "Username already exists" });
+        await pool.query("ROLLBACK");
+        return res.status(400).json({
+          errors: [{ msg: "Username already exists" }],
+        });
       }
-
-      // Check if email already exists
-      const emailQuery = {
-        text: "SELECT * FROM users WHERE email = $1",
-        values: [email],
-      };
-      const emailCheck = await pool.query(emailQuery);
+      console.log(2);
+      const emailCheck = await pool.query(
+        "SELECT * FROM users WHERE email = $1",
+        [email]
+      );
+      console.log("check");
       if (emailCheck.rows.length > 0) {
-        await pool.query('ROLLBACK');
-        return res.status(400).json({ error: "Email already exists" });
+        await pool.query("ROLLBACK");
+        return res.status(400).json({
+          errors: [{ msg: "Email already exists" }],
+        });
       }
-
+      console.log(1);
       const hashedPassword = await bcrypt.hash(password, 10);
-      const insertQuery = {
-        text: "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
-        values: [name, email, hashedPassword],
-      };
-      const result = await pool.query(insertQuery);
+      const result = await pool.query(
+        "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
+        [name, email, hashedPassword]
+      );
       const userId = result.rows[0].id;
+      console.log("insert");
+      await pool.query(
+        "INSERT INTO user_roles (user_id, role_id) VALUES ($1, (SELECT id FROM roles WHERE name = 'User'))",
+        [userId]
+      );
+      await pool.query("COMMIT");
+      console.log("Sending Email");
+      // Generate JWT token
+      const token = jwt.sign({ id: userId }, SECRET_KEY, { expiresIn: "1d" });
+      console.log("aaa");
 
-      // Insert user role
-      const insertRoleQuery = {
-        text: "INSERT INTO user_roles (user_id, role_id) VALUES ($1, (SELECT id FROM roles WHERE name = 'User'))",
-        values: [userId],
+      // Setup email transporter
+      const transporter = nodemailer.createTransport({
+        service: "outlook",
+        auth: {
+          user: process.env.EMAIL_USERNAME,
+          pass: process.env.EMAIL_PASSWORD,
+        },
+      });
+      console.log("sending email");
+
+      // Send email with the password
+      const mailOptions = {
+        from: process.env.EMAIL_USERNAME,
+        to: email,
+        subject: "Your Account Registration",
+        text: `Hello ${name},\n\nYour account has been successfully created. Your password is: ${password}\n\nPlease change your password upon first login for security reasons.`,
       };
-      await pool.query(insertRoleQuery);
 
-      // Commit the transaction
-      await pool.query('COMMIT');
-
-      const token = jwt.sign({ id: userId }, SECRET_KEY, { expiresIn: '1d' });
-      res.status(201).json({ token });
+      // Send email and handle response
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error("Error sending email:", error);
+          return res.status(500).json({
+            error: "Account created but failed to send email",
+            token, // Still return token even if email fails
+          });
+        }
+        console.log("Email sent:", info.response);
+        res.status(201).json({ token });
+      });
     } catch (err) {
-      await pool.query('ROLLBACK');
+      await pool.query("ROLLBACK");
       console.error("Error occurred:", err);
       res.status(500).json({ error: "Internal Server Error" });
     }
   }
 );
-
 
 app.get(
   "/api/leads",
@@ -852,26 +937,24 @@ app.get(
   }
 );
 
-app.get('/api/leads/lowest-year',
-  async (req, res) => {
-    try {
-      const result = await pool.query('SELECT MIN("Start_Year") as lowest_year FROM processed_factors');
-      if (result.rows.length > 0 && result.rows[0].lowest_year) {
-        res.json({ lowestYear: result.rows[0].lowest_year });
-      } else {
-        res.status(404).json({ error: 'No data found' });
-      }
-    } catch (error) {
-      console.error('Error fetching lowest year:', error);
-      res.status(500).json({ error: 'Internal server error' });
+app.get("/api/leads/lowest-year", async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT MIN("Start_Year") as lowest_year FROM processed_factors'
+    );
+    if (result.rows.length > 0 && result.rows[0].lowest_year) {
+      res.json({ lowestYear: result.rows[0].lowest_year });
+    } else {
+      res.status(404).json({ error: "No data found" });
     }
+  } catch (error) {
+    console.error("Error fetching lowest year:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
-);
-
-
+});
 
 // Login endpoint
-app.post('/api/login', async (req, res) => {
+app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
   try {
     const userQuery = {
@@ -893,15 +976,19 @@ app.post('/api/login', async (req, res) => {
         };
         await pool.query(updateLoginCounterQuery);
 
-        const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1d' });
-        return res.json({ 
+        const token = jwt.sign({ id: user.id }, SECRET_KEY, {
+          expiresIn: "1d",
+        });
+        return res.json({
           token,
           isFirstLogin,
-          message: isFirstLogin ? 'Please change your password for security reasons.' : null
+          message: isFirstLogin
+            ? "Please change your password for security reasons."
+            : null,
         });
       }
     }
-    return res.status(401).json({ error: 'Invalid credentials' });
+    return res.status(401).json({ error: "Invalid credentials" });
   } catch (error) {
     console.error("Error occurred:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -909,33 +996,40 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Change password endpoint
-app.post('/api/change-password', passport.authenticate('jwt', { session: false }), async (req, res) => {
-  const { newPassword } = req.body;
-  try {
-    const user = req.user;
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    const updatePasswordQuery = {
-      text: "UPDATE users SET password_hash = $1 WHERE id = $2",
-      values: [hashedPassword, user.id],
-    };
-    await pool.query(updatePasswordQuery);
-    res.json({ message: 'Password changed successfully' });
-  } catch (error) {
-    console.error("Error occurred:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+app.post(
+  "/api/change-password",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    const { newPassword } = req.body;
+    try {
+      const user = req.user;
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const updatePasswordQuery = {
+        text: "UPDATE users SET password_hash = $1 WHERE id = $2",
+        values: [hashedPassword, user.id],
+      };
+      await pool.query(updatePasswordQuery);
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error occurred:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   }
-});
-
+);
 
 // Protected route example
-app.get('/api/protected', passport.authenticate('jwt', { session: false }), (req, res) => {
-  res.json({ message: 'You accessed a protected route!', user: req.user });
-});
+app.get(
+  "/api/protected",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    res.json({ message: "You accessed a protected route!", user: req.user });
+  }
+);
 
 // Check role API
 app.get("/api/check-role", async (req, res) => {
   try {
-    const token = req.headers.authorization.split(' ')[1];
+    const token = req.headers.authorization.split(" ")[1];
     try {
       const decodedToken = jwt.verify(token, SECRET_KEY);
       const userId = decodedToken.id;
@@ -958,7 +1052,6 @@ app.get("/api/check-role", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 // New route to get the latest data year
 app.get("/api/latest-data-year", async (req, res) => {
@@ -1165,7 +1258,7 @@ app.get("/api/latest-school-year-semester", async (req, res) => {
       const { Start_Year, Semester } = result.rows[0];
       res.json({
         latestYear: Start_Year,
-        latestSemester: Semester
+        latestSemester: Semester,
       });
     } else {
       res.status(404).json({ error: "No data found" });
@@ -1176,6 +1269,6 @@ app.get("/api/latest-school-year-semester", async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
+app.listen(process.env.PORT || 5000, "0.0.0.0", () => {
   console.log(`Server is running on port ${process.env.PORT || 5000}`);
 });

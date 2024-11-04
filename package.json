@@ -36,6 +36,7 @@
     "jwt-decode": "^4.0.0",
     "moment": "^2.29.4",
     "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.16",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
