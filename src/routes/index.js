@@ -43,34 +43,34 @@ const routes = [
     path: "/enrollments",
     component: Enrollments,
   },
-  {
-    path: "/settings-profile",
-    component: ProfileSettings,
-  },
-  {
-    path: "/settings-billing",
-    component: Bills,
-  },
+  // {
+  //   path: "/settings-profile",
+  //   component: ProfileSettings,
+  // },
+  // {
+  //   path: "/settings-billing",
+  //   component: Bills,
+  // },
   {
     path: "/getting-started",
     component: GettingStarted,
   },
-  {
-    path: "/features",
-    component: DocFeatures,
-  },
-  {
-    path: "/components",
-    component: DocComponents,
-  },
+  // {
+  //   path: "/features",
+  //   component: DocFeatures,
+  // },
+  // {
+  //   path: "/components",
+  //   component: DocComponents,
+  // },
   {
     path: "/forecast",
     component: Integration,
   },
-  {
-    path: "/charts",
-    component: Charts,
-  },
+  // {
+  //   path: "/charts",
+  //   component: Charts,
+  // },
   {
     path: "/404",
     component: Page404,

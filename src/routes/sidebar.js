@@ -28,11 +28,6 @@ const submenuIconClasses = `h-5 w-5`;
 
 const routes = [
   {
-    path: "/app/charts",
-    icon: <TvIcon className={iconClasses} />,
-    name: "Dashboard",
-  },
-  {
     path: "/app/getting-started",
     icon: <HomeIcon className={iconClasses} />, // Changed to HomeIcon for "Dashboard"
     name: "About",
