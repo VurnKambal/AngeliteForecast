@@ -4,9 +4,9 @@ const { Pool } = require('pg');
 // Database connection details
 const pool = new Pool({
   user: 'postgres',
-  host: '34.126.160.94',
+  host: 'localhost',
   database: 'angeliteforecast',
-  password: 'thesis',
+  password: 'password',
   port: 5432,
 });
 
